@@ -40,7 +40,7 @@ public class PythonController {
             String arg = requestData.containsKey("arg") ? requestData.get("arg").toString() : "";
 
             // Chemin absolu vers le script Python
-            String scriptPath = "/home/thomas/Documents/Projet4A/corrigeExamBackDAN/src/main/resources/DAN_script/run_dan.py";
+            String scriptPath = "/home/leo/Dropbox/00000_INSA_4A/Gros projet/corrigeExamBackDAN/src/main/resources/DAN_script/run_dan.py";
 
             // Afficher le répertoire de travail actuel
             String workingDir = System.getProperty("user.dir");
