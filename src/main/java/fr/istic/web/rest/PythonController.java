@@ -1,4 +1,3 @@
-
 package fr.istic.web.rest;
 
 import jakarta.ws.rs.Consumes;
@@ -15,6 +14,9 @@ import java.util.HashMap;
 import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import java.util.Base64;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 
 /**
  * REST controller to run a Python script
@@ -32,21 +34,25 @@ public class PythonController {
         Map<String, Object> response = new HashMap<>();
         StringBuilder output = new StringBuilder();
         StringBuilder errorOutput = new StringBuilder();
-
+    
         try {
             log.info("Lancement du script Python...");
-
-            // Récupérer l'argument envoyé dans la requête JSON
-            String arg = requestData.containsKey("arg") ? requestData.get("arg").toString() : "";
-
-            // Chemin absolu vers le script Python
-            String scriptPath = "/home/thomas/Documents/Projet4A/corrigeExamBackDAN/src/main/resources/DAN_script/run_dan.py";
-
-            // Afficher le répertoire de travail actuel
-            String workingDir = System.getProperty("user.dir");
-            log.info("Répertoire de travail actuel: " + workingDir);
-
-            // Vérifier si le fichier existe
+    
+            // Retrieve the base64-encoded image data
+            String base64Data = requestData.containsKey("imagePath") ? requestData.get("imagePath").toString() : "";
+            if (base64Data.contains(",")) {
+                base64Data = base64Data.split(",")[1]; // Remove "data:image/png;base64," prefix
+            }
+    
+            // Decode base64 and save it as an image file
+            byte[] imageBytes = Base64.getDecoder().decode(base64Data);
+            String tempImagePath = "/tmp/uploaded_image.png";
+            Files.write(Paths.get(tempImagePath), imageBytes);
+            
+            // Define the path to the Python script
+            String scriptPath = "/home/xpinar/correctExamDAN/corrigeExamBackDAN/src/main/resources/DAN_script/run_dan.py";
+    
+            // Check if the script file exists
             File scriptFile = new File(scriptPath);
             if (!scriptFile.exists()) {
                 log.error("Le fichier script Python est introuvable: " + scriptPath);
@@ -54,51 +60,50 @@ public class PythonController {
                         .entity(Map.of("error", "Le fichier script Python est introuvable: " + scriptPath))
                         .build();
             }
-
-            // Commande pour exécuter le script Python avec l'argument
-            ProcessBuilder pb = new ProcessBuilder("python3", scriptFile.getAbsolutePath(), arg);
-            pb.directory(scriptFile.getParentFile());  // Définir le répertoire de travail
+    
+            // Command to run the Python script with the image path as argument
+            ProcessBuilder pb = new ProcessBuilder("python3", scriptFile.getAbsolutePath(), tempImagePath);
+            pb.directory(scriptFile.getParentFile());  // Set working directory
             Process process = pb.start();
-
-            // Lire la sortie standard du script Python
+    
+            // Read the Python script's standard output
             BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()));
             String line;
             while ((line = reader.readLine()) != null) {
                 output.append(line).append("\n");
                 log.info("Sortie Python: " + line);
             }
-
-            // Lire les erreurs éventuelles du script Python
+    
+            // Read any errors from the Python script
             BufferedReader errorReader = new BufferedReader(new InputStreamReader(process.getErrorStream()));
             String errorLine;
             while ((errorLine = errorReader.readLine()) != null) {
                 errorOutput.append(errorLine).append("\n");
                 log.error("Erreur/Avertissement Python: " + errorLine);
             }
-
-            // Attendre la fin du processus
+    
+            // Wait for the process to finish
             int exitCode = process.waitFor();
             log.info("Processus terminé avec code : " + exitCode);
-
-            // Construire la réponse JSON
+    
+            // Build the response JSON
             response.put("exitCode", exitCode);
             response.put("output", output.toString());
-
-            // Si tout s'est bien passé
+    
             if (exitCode == 0) {
                 if (errorOutput.length() > 0) {
-                    // Si des avertissements sont présents
+                    // If there are warnings
                     response.put("warnings", errorOutput.toString());
                 }
                 return Response.ok(response).build();
             } else {
-                // S'il y a des erreurs
+                // If there are errors
                 response.put("error", errorOutput.toString());
                 return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
                         .entity(response)
                         .build();
             }
-
+    
         } catch (Exception e) {
             log.error("Erreur lors de l'exécution du script Python", e);
             response.put("error", "Erreur lors de l'exécution du script Python: " + e.getMessage());
@@ -107,4 +112,4 @@ public class PythonController {
                     .build();
         }
     }
-}
+}    
