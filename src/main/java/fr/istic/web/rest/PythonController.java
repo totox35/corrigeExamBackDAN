@@ -12,6 +12,8 @@ import java.io.File;
 import java.io.InputStreamReader;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.UUID;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import java.util.Base64;
@@ -46,7 +48,8 @@ public class PythonController {
     
             // Decode base64 and save it as an image file
             byte[] imageBytes = Base64.getDecoder().decode(base64Data);
-            String tempImagePath = "/tmp/uploaded_image.png";
+            String uniqueId = UUID.randomUUID().toString();
+            String tempImagePath = "/tmp/uploaded_image_" + uniqueId + ".png";
             Files.write(Paths.get(tempImagePath), imageBytes);
             
             // Define the path to the Python script
