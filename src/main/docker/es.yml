@@ -33,3 +33,6 @@ services:
             cpus: '2.0'
           reservations:
             cpus: '1.0'
+networks:
+  elastic:
+    external: true
