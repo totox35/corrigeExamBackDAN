@@ -72,7 +72,3 @@ services:
       - 9010:9000
       - 9090:9090
     command: server /data --console-address ":9090"
-
-networks:
-  elastic:
-    driver: bridge

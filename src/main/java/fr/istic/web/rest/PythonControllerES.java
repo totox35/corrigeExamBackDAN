@@ -70,7 +70,7 @@ public class PythonControllerES {
     
             // Decode base64 and save it as a temporary PDF file
             byte[] pdfBytes = Base64.getDecoder().decode(base64Data);
-            String tempPdfPath = "/tmp/" + pdfName; // Use the provided PDF name
+            String tempPdfPath = "/tmp/" + pdfName;
             Files.write(Paths.get(tempPdfPath), pdfBytes);
             log.info("PDF file saved at: " + tempPdfPath);
     
