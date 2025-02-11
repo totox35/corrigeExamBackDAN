@@ -1,5 +1,3 @@
-## install elasticsearch
-
 from elasticsearch import Elasticsearch, helpers
 import uuid
 from embedding import get_embeddings
@@ -34,8 +32,6 @@ def create_index(index_name: str):
         )
         print(f"Index {index_name} created successfully.")
 
-
-
 def add_data(texts: list, course_name: str, pdf_name: str):
     """
     Add texts with the corresponding embedding and metadata to Elasticsearch.
@@ -45,7 +41,7 @@ def add_data(texts: list, course_name: str, pdf_name: str):
     course_name (str): The name of the course.
     pdf_name (str): The name of the PDF from which the chunks originate.
     """
-    index_name = course_name
+    index_name = "course_" + course_name
     create_index(index_name=index_name)
 
     embeddings = get_embeddings(texts)
@@ -56,7 +52,7 @@ def add_data(texts: list, course_name: str, pdf_name: str):
             "_id": str(uuid.uuid4()),  # Dynamic unique ID
             "text": text,
             "embedding": embeddings[i],
-            "pdf_name": pdf_name 
+            "pdf_name": pdf_name
         }
         documents.append(document)
 
@@ -64,15 +60,14 @@ def add_data(texts: list, course_name: str, pdf_name: str):
     helpers.bulk(es, documents, index=index_name)
     print(f"Data from '{pdf_name}' added successfully to course '{course_name}'.")
 
-
-def add_data_from_pdf(pdf_binary: bytes, course_name: str, pdf_name: str) : 
+def add_data_from_pdf(pdf_binary: bytes, course_name: str, pdf_name: str):
     """
     Add texts from a pdf, with the corresponding embedding, to an elasticsearch.
-    
+
     Parameters:
     pdf_binary (bytes): The binary content of a PDF file.
-    exam_name (str): The name of the exam in which we add data 
-    course_name (str): The name of the course in which we add data
+    course_name (str): The name of the course in which we add data.
+    pdf_name (str): The name of the PDF from which the chunks originate.
     """
     texts = chunk_text_from_pdf(pdf_binary=pdf_binary)
     add_data(texts, course_name=course_name, pdf_name=pdf_name)
@@ -132,8 +127,8 @@ def remove_all_chunks_from_course(course_name: str):
     course_name (str): The name of the course in which we delete all chunks.
     """
     # Construct the index name based on exam and course
-    index_name = f"{course_name}"
-    
+    index_name = f"course_{course_name}"
+
     # Check if index exists before trying to delete
     if es.indices.exists(index=index_name):
         # Delete index
@@ -150,7 +145,7 @@ def remove_chunks_by_pdf(course_name: str, pdf_name: str):
     course_name (str): The name of the course associated with the chunks.
     pdf_name (str): The name of the PDF whose chunks need to be removed.
     """
-    index_name = course_name
+    index_name = f"course_{course_name}"
 
     # Check if the index exists
     if not es.indices.exists(index=index_name):
@@ -169,3 +164,41 @@ def remove_chunks_by_pdf(course_name: str, pdf_name: str):
     response = es.delete_by_query(index=index_name, body=query)
     deleted = response.get('deleted', 0)
     print(f"Deleted {deleted} chunks associated with '{pdf_name}' from course '{course_name}'.")
+
+def get_all_pdf_names(course_name:str):
+    """
+    Retrieves all unique PDF names stored in Elasticsearch for a specified course.
+
+    Parameters:
+    course_name (str): The name of the course for which we search pdf names.
+
+    Returns:
+    set: A set of all unique PDF names.
+    """
+    pdf_names = set()
+
+    index_name = f"course_{course_name}"
+
+    # Check if the index exists
+    if not es.indices.exists(index=index_name):
+        print(f"No index found for course '{course_name}'. Nothing to retrieve.")
+        return pdf_names
+
+    # Query for unique pdf_names in the index
+    query = {
+        "aggs": {
+            "unique_pdf_names": {
+                "terms": {
+                    "field": "pdf_name",
+                    "size": 10000  # Adjust size as needed
+                }
+            }
+        }
+    }
+    response = es.search(index=index_name, body=query)
+    
+    # Extract unique pdf_names from the response
+    for bucket in response['aggregations']['unique_pdf_names']['buckets']:
+        pdf_names.add(bucket['key'])
+
+    return pdf_names

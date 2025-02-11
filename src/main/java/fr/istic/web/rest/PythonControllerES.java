@@ -239,5 +239,96 @@ public class PythonControllerES {
         }
     }
 
+    @POST
+    @Path("/get-pdf-names")
+    @Consumes(MediaType.APPLICATION_JSON)
+    @Produces(MediaType.APPLICATION_JSON)
+    public Response getPdfNames(Map<String, Object> requestData) {
+        Map<String, Object> response = new HashMap<>();
+        StringBuilder output = new StringBuilder();
+        StringBuilder errorOutput = new StringBuilder();
+
+        try {
+            log.info("Starting the process to get all PDF names...");
+
+            // Retrieve courseName from the request
+            String courseName = requestData.containsKey("courseName") ? requestData.get("courseName").toString() : "";
+            if (courseName.isEmpty()) {
+                log.error("Course name missing in the request.");
+                return Response.status(Response.Status.BAD_REQUEST)
+                        .entity(Map.of("error", "Course name is missing."))
+                        .build();
+            }
+
+            // Path to Python script
+            String scriptPath = "src/main/resources/rag/get_list_of_pdf.py";
+
+            // Check if script file exists
+            File scriptFile = new File(scriptPath);
+            if (!scriptFile.exists()) {
+                log.error("Python script not found: " + scriptPath);
+                return Response.status(Response.Status.BAD_REQUEST)
+                        .entity(Map.of("error", "Python script not found: " + scriptPath))
+                        .build();
+            }
+
+            // Run Python script with courseName as argument
+            ProcessBuilder pb = new ProcessBuilder(
+                    "python3",
+                    scriptFile.getAbsolutePath(),
+                    courseName
+            );
+            pb.directory(scriptFile.getParentFile()); // Set working directory
+            Process process = pb.start();
+
+            // Read the Python script's standard output
+            BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()));
+            String line;
+            while ((line = reader.readLine()) != null) {
+                output.append(line).append("\n");
+                log.info("Python Output: " + line);
+            }
+
+            // Read any errors from the Python script
+            BufferedReader errorReader = new BufferedReader(new InputStreamReader(process.getErrorStream()));
+            String errorLine;
+            while ((errorLine = errorReader.readLine()) != null) {
+                errorOutput.append(errorLine).append("\n");
+                log.error("Python Error/Warning: " + errorLine);
+            }
+
+            // Wait for the process to finish
+            int exitCode = process.waitFor();
+            log.info("Process finished with exit code: " + exitCode);
+
+            // Build the response JSON
+            response.put("exitCode", exitCode);
+            response.put("output", output.toString());
+
+            if (exitCode == 0) {
+                response.put("status", "success");
+                response.put("message", "PDF names retrieved successfully.");
+                if (errorOutput.length() > 0) {
+                    response.put("warnings", errorOutput.toString());
+                }
+                return Response.ok(response).build();
+            } else {
+                response.put("status", "failure");
+                response.put("error", errorOutput.toString());
+                return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+                        .entity(response)
+                        .build();
+            }
+
+        } catch (Exception e) {
+            log.error("Error while retrieving PDF names.", e);
+            response.put("error", "Error while retrieving PDF names: " + e.getMessage());
+            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+                    .entity(response)
+                    .build();
+        }
+    }
+
+
     
 }
