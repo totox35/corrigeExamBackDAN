@@ -161,14 +161,17 @@ public class PythonControllerES {
         try {
             log.info("Starting the process to delete chunks...");
 
-            // Retrieve and validate the PDF name
-            String pdfName = requestData.containsKey("pdfName") ? requestData.get("pdfName").toString() : "";
-            if (pdfName.isEmpty()) {
-                log.error("No PDF name provided in the request.");
+            // Retrieve and validate the course name
+            String courseName = requestData.containsKey("courseName") ? requestData.get("courseName").toString() : "";
+            if (courseName.isEmpty()) {
+                log.error("Course name missing in the request.");
                 return Response.status(Response.Status.BAD_REQUEST)
-                        .entity(Map.of("error", "No PDF name provided in the request."))
+                        .entity(Map.of("error", "Course name is missing."))
                         .build();
             }
+
+            // Retrieve and validate the PDF name (optional)
+            String pdfName = requestData.containsKey("pdfName") ? requestData.get("pdfName").toString() : "";
 
             // Path to Python script
             String scriptPath = "src/main/resources/rag/delete_chunks_from_es.py";
@@ -182,10 +185,11 @@ public class PythonControllerES {
                         .build();
             }
 
-            // Run the Python script with the PDF name as argument
+            // Run the Python script with the course name and optional PDF name as arguments
             ProcessBuilder pb = new ProcessBuilder(
                     "python3",
                     scriptFile.getAbsolutePath(),
+                    courseName,
                     pdfName
             );
             pb.directory(scriptFile.getParentFile()); // Set working directory
