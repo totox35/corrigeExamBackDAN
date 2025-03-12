@@ -4,7 +4,6 @@ import io.quarkus.panache.common.Page;
 import fr.istic.domain.StudentResponse;
 import fr.istic.domain.ResponseGroup;
 import fr.istic.service.customdto.EntityId;
-//import fr.istic.service.customdto.ResponseGroupsIdsDto;
 import fr.istic.service.dto.ResponseGroupDTO;
 import fr.istic.service.mapper.ResponseGroupMapper;
 import org.slf4j.Logger;
@@ -56,7 +55,7 @@ public class ResponseGroupService {
     }
 
 
-        /**
+    /**
      * Delete the ResponseGroup by ID.
      *
      * @param id the ID of the entity.
@@ -81,11 +80,22 @@ public class ResponseGroupService {
             .map(responseGroup -> responseGroupMapper.toDto((ResponseGroup) responseGroup));
     }
 
+    public List<ResponseGroupDTO> findByQuestion(Long questionId) {
+        log.debug("Request to get ResponseGroups for question : {}", questionId);
+        List<ResponseGroup> responseGroups = ResponseGroup.findByQuestion(questionId).list();
+        return responseGroupMapper.toDto(responseGroups);
+    }
+
+    
+    public Optional<ResponseGroupDTO> findByPrediction(Long predictionId) {
+        log.debug("Request to get ResponseGroup containing prediction : {}", predictionId);
+        ResponseGroup responseGroup = ResponseGroup.findByPrediction(predictionId).firstResult();
+        return Optional.ofNullable(responseGroup)
+            .map(responseGroupMapper::toDto);
+    }
+
     /**
-     * Get all the ResponseGroups.
-     *
-     * @param page the pagination information.
-     * @return a paged list of entities.
+     * Get all the ResponseGroups with pagination.
      */
     public Paged<ResponseGroupDTO> findAll(Page page) {
         log.debug("Request to get all ResponseGroups");

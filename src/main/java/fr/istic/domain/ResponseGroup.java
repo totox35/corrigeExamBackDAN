@@ -14,7 +14,7 @@ import java.util.Set;
  * A Response Group.
  */
 @Entity
-@Table(name = "prediction")
+@Table(name = "response_group")
 @RegisterForReflection
 public class ResponseGroup extends PanacheEntityBase implements Serializable {
 
@@ -29,11 +29,11 @@ public class ResponseGroup extends PanacheEntityBase implements Serializable {
     @JsonbTransient
     public Question question;
 
-    @Column(name="predictionIds")
-    public double[] predictionIds;
+    @Column(name="prediction_ids")
+    public Long[] predictionIds;
 
-    @Column(name="averageEmbedding")
-    public double[] averageEmbedding;
+    @Column(name="average_embedding")
+    public Double[] averageEmbedding;
 
 
 
@@ -96,24 +96,28 @@ public class ResponseGroup extends PanacheEntityBase implements Serializable {
         }
     }
 
+
     public static PanacheQuery<ResponseGroup> findByQuestionId(long qid) {
-        return find("select responseGroup from ResponseGroup responseGroup where responseGroup.question.id = ?1", qid);
+        return find("select rg from ResponseGroup rg where rg.question.id = ?1", qid);
     }
-
+    
     public static long deleteByQIds(Set<Long> qids) {
-        return delete("delete from ResponseGroup pr where pr.question.id in ?1", qids);
+        return delete("delete from ResponseGroup rg where rg.question.id in ?1", qids);
     }
-
+    
     public static long deleteByQId(Long qid) {
-        return delete("delete from ResponseGroup pr where pr.question.id = ?1", qid);
+        return delete("delete from ResponseGroup rg where rg.question.id = ?1", qid);
     }
-
-
+    
     public static PanacheQuery<ResponseGroup> canAccess(long responseGroupId, String login) {
-        return find("select pr from ResponseGroup pr join pr.question.exam.course.profs as u where pr.id = ?1 and u.login = ?2", responseGroupId, login);
+        return find("select rg from ResponseGroup rg join rg.question.exam.course.rgofs as u where rg.id = ?1 and u.login = ?2", responseGroupId, login);
     }
-
-    public static PanacheQuery<ResponseGroup> findResponseGroupWithoutStudentResponse(List<Long> responseGroupIds) {
-        return find("select pr from ResponseGroup pr where pr.id in ?1 and pr.question.studentResponse is null", responseGroupIds);
+    
+    public static PanacheQuery<ResponseGroup> findByQuestion(Long questionId) {
+        return find("select rg from ResponseGroup rg where rg.question.id = ?1", questionId);
+    }
+    
+    public static PanacheQuery<ResponseGroup> findByPrediction(Long predictionId) {
+        return find("select rg from ResponseGroup rg where ?1 member of rg.predictionIds", predictionId);
     }
 }

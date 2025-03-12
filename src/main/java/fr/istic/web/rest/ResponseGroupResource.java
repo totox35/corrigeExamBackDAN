@@ -168,46 +168,6 @@ public class ResponseGroupResource {
         return response.build();
     }
 
-
-    /**
-     * {@code GET  /responseGroups} : get all the responseGroups.
-     *
-     * @param pageRequest the pagination information.
-     * @return the {@link Response} with status {@code 200 (OK)} and the list of responseGroups in body.
-     */
-    @GET
-    @RolesAllowed({AuthoritiesConstants.USER, AuthoritiesConstants.ADMIN})
-    public Response getAllResponseGroups(@BeanParam PageRequestVM pageRequest, @BeanParam SortRequestVM sortRequest, @Context UriInfo uriInfo, @Context SecurityContext ctx) {
-        log.debug("REST request to get a page of ResponseGroups");
-        var page = pageRequest.toPage();
-        MultivaluedMap<String, String> param = uriInfo.getQueryParameters();
-        Paged<ResponseGroupDTO> result = new Paged<>(0, 0, 0, 0, new ArrayList<>());
-        if (param.containsKey("questionId")) {
-            List<String> questionId = param.get("questionId");
-            result = responseGroupService.findResponseGroupByQuestionId(page, Long.parseLong(questionId.get(0)));
-        } else {
-            if (ctx.getUserPrincipal().getName() != null) {
-                var userLogin = Optional.ofNullable(ctx.getUserPrincipal().getName());
-                if (!userLogin.isPresent()) {
-                    throw new AccountResourceException("Current user login not found");
-                }
-                var user = User.findOneByLogin(userLogin.get());
-                if (!user.isPresent()) {
-                    throw new AccountResourceException("User could not be found");
-
-                } else if (user.get().authorities.size() >= 1 && user.get().authorities.stream().anyMatch(e1 -> e1.equals(new Authority("ROLE_USER")))) {
-                    //Ici j'ai modif l'autorisation de Admin -> User, je sais pas si c'est bien ou pas mais voila ca me permet mon ajout
-                    result = responseGroupService.findAll(page);
-                } else {
-                    return Response.status(403, "Current user cannot access to this resource").build();
-                }
-            }
-        }
-        var response = Response.ok().entity(result.content);
-        response = PaginationUtil.withPaginationInfo(response, uriInfo, result);
-        return response.build();
-    }
-
     /**
      * {@code GET  /responseGroups/:id} : get the "id" responseGroup.
      *
@@ -236,14 +196,15 @@ public class ResponseGroupResource {
     @Path("/question/{questionId}")
     @RolesAllowed({AuthoritiesConstants.USER, AuthoritiesConstants.ADMIN})
     public Response getResponseGroupByQuestionId(@PathParam("questionId") Long questionId, @Context SecurityContext ctx) {
-        log.debug("REST request to get ResponseGroup : {}", questionId);
+        log.debug("REST request to get ResponseGroups for question : {}", questionId);
+        
         if (!securityService.canAccess(ctx, questionId, ResponseGroup.class)) {
             return Response.status(403, "Current user cannot access to this resource").build();
         }
-        Optional<ResponseGroupDTO> responseGroupDTO = responseGroupService.findOne(questionId);
-        return ResponseUtil.wrapOrNotFound(responseGroupDTO);
+        
+        List<ResponseGroupDTO> responseGroupDTOs = responseGroupService.findByQuestion(questionId);
+        return Response.ok(responseGroupDTOs).build();
     }
-
      /**
      * {@code GET  /responseGroups/:id} : get the "id" responseGroup.
      *
@@ -251,14 +212,53 @@ public class ResponseGroupResource {
      * @return the {@link Response} with status {@code 200 (OK)} and with body the responseGroupDTO, or with status {@code 404 (Not Found)}.
      */
     @GET
-    @Path("/{id}")
+    @Path("/prediction/{predictionId}")
     @RolesAllowed({AuthoritiesConstants.USER, AuthoritiesConstants.ADMIN})
-    public Response getResponseGroupByPredictionId(@PathParam("id") Long id, @Context SecurityContext ctx) {
-        log.debug("REST request to get ResponseGroup : {}", id);
-        if (!securityService.canAccess(ctx, id, ResponseGroup.class)) {
+    public Response getResponseGroupByPredictionId(@PathParam("predictionId") Long predictionId, @Context SecurityContext ctx) {
+        log.debug("REST request to get ResponseGroup : {}", predictionId);
+        if (!securityService.canAccess(ctx, predictionId, ResponseGroup.class)) {
             return Response.status(403, "Current user cannot access to this resource").build();
         }
-        Optional<ResponseGroupDTO> responseGroupDTO = responseGroupService.findOne(id);
+        Optional<ResponseGroupDTO> responseGroupDTO = responseGroupService.findByPrediction(predictionId);
         return ResponseUtil.wrapOrNotFound(responseGroupDTO);
+    }
+
+    /**
+     * {@code GET  /responseGroups} : get all the responseGroups.
+     *
+     * @param pageRequest the pagination information.
+     * @return the {@link Response} with status {@code 200 (OK)} and the list of responseGroups in body.
+     */
+    @GET
+    @RolesAllowed({AuthoritiesConstants.USER, AuthoritiesConstants.ADMIN})
+    public Response getAllResponseGroups(@BeanParam PageRequestVM pageRequest, @BeanParam SortRequestVM sortRequest, @Context UriInfo uriInfo, @Context SecurityContext ctx) {
+        log.debug("REST request to get a page of ResponseGroups");
+        var page = pageRequest.toPage();
+        MultivaluedMap<String, String> param = uriInfo.getQueryParameters();
+        Paged<ResponseGroupDTO> result = new Paged<>(0, 0, 0, 0, new ArrayList<>());
+        if (param.containsKey("questionId")) {
+            List<String> questionId = param.get("questionId");
+            result = responseGroupService.findResponseGroupByQuestionId(page, Long.parseLong(questionId.get(0)));
+        } else {
+            if (ctx.getUserPrincipal().getName() != null) {
+                var userLogin = Optional.ofNullable(ctx.getUserPrincipal().getName());
+                if (!userLogin.isPresent()) {
+                    throw new AccountResourceException("Current user login not found");
+                }
+                var user = User.findOneByLogin(userLogin.get());
+                if (!user.isPresent()) {
+                    throw new AccountResourceException("User could not be found");
+
+                } else if (user.get().authorities.size() >= 1 && user.get().authorities.stream().anyMatch(e1 -> e1.equals(new Authority("ROLE_USER")))) {
+                    // Fix: Pass the page parameter to findAll method
+                    result = responseGroupService.findAll(page);
+                } else {
+                    return Response.status(403, "Current user cannot access to this resource").build();
+                }
+            }
+        }
+        var response = Response.ok().entity(result.content);
+        response = PaginationUtil.withPaginationInfo(response, uriInfo, result);
+        return response.build();
     }
 }

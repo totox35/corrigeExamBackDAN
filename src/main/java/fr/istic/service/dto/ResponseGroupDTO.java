@@ -13,21 +13,17 @@ public class ResponseGroupDTO implements Serializable {
 
     public Long questionId;
 
-    public Double[] predictionIds;
+    public Long[] predictionIds;
 
     public Double[] averageEmbedding;
 
 
     @Override
     public boolean equals(Object o) {
-        if (this == o) {
-            return true;
-        }
-        if (!(o instanceof PredictionDTO)) {
+        if (!(o instanceof ResponseGroupDTO)) {
             return false;
         }
-
-        return id != null && id.equals(((PredictionDTO) o).id);
+        return id != null && id.equals(((ResponseGroupDTO) o).id);
     }
 
     @Override
@@ -37,7 +33,7 @@ public class ResponseGroupDTO implements Serializable {
 
     @Override
     public String toString() {
-        return "PredictionDTO{" +
+        return "ResponseGroupeDTO{" +
             "id=" + id +
             ", questionId='" + questionId + "'" +
             ", predictionIds='" + predictionIds + "'" +
