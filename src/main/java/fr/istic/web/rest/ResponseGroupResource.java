@@ -14,13 +14,12 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import fr.istic.domain.Authority;
-import fr.istic.domain.StudentResponse;
 import fr.istic.domain.ResponseGroup;
 import fr.istic.domain.User;
 import fr.istic.security.AuthoritiesConstants;
 import fr.istic.service.Paged;
 import fr.istic.service.SecurityService;
-import fr.istic.service.customdto.ResponseGroupsIdsDto;
+//import fr.istic.service.customdto.ResponseGroupsIdsDto;
 import fr.istic.web.rest.vm.PageRequestVM;
 import fr.istic.web.rest.vm.SortRequestVM;
 import fr.istic.web.util.PaginationUtil;
@@ -74,20 +73,6 @@ public class ResponseGroupResource {
         var response = Response.created(fromPath(uriInfo.getPath()).path(result.id.toString()).build()).entity(result);
         HeaderUtil.createEntityCreationAlert(applicationName, true, ENTITY_NAME, result.id.toString()).forEach(response::header);
         return response.build();
-    }
-
-    @POST
-    @Path("/findResponseGroupWithoutStudentResponse")
-    @RolesAllowed({AuthoritiesConstants.USER, AuthoritiesConstants.ADMIN})
-    public Response findResponseGroupWithoutStudentResponse(ResponseGroupsIdsDto responseGroupIdsDTO, @Context UriInfo uriInfo) {
-        log.debug("REST request to save ResponseGroup : {}", responseGroupIdsDTO);
-        if (responseGroupIdsDTO.getResponseGroupsids().size()==0) {
-            throw new BadRequestAlertException("Please provide a list of responseGroup ids", ENTITY_NAME, "idnull");
-        }
-        List<Long> res = responseGroupService.findResponseGroupWithoutStudentResponse(responseGroupIdsDTO);
-        ResponseGroupsIdsDto dto = new ResponseGroupsIdsDto();
-        dto.setResponseGroupsids(res);
-        return Response.ok(dto).build();
     }
 
     /**
