@@ -194,7 +194,6 @@ public class PredictionResource {
     public Response getAllPredictions(@BeanParam PageRequestVM pageRequest, @BeanParam SortRequestVM sortRequest, @Context UriInfo uriInfo, @Context SecurityContext ctx) {
         log.debug("REST request to get a page of Predictions");
         var page = pageRequest.toPage();
-        var sort = sortRequest.toSort();
         MultivaluedMap<String, String> param = uriInfo.getQueryParameters();
         Paged<PredictionDTO> result = new Paged<>(0, 0, 0, 0, new ArrayList<>());
         if (param.containsKey("questionId")) {

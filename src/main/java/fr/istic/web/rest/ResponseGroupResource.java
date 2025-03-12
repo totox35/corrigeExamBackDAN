@@ -180,7 +180,6 @@ public class ResponseGroupResource {
     public Response getAllResponseGroups(@BeanParam PageRequestVM pageRequest, @BeanParam SortRequestVM sortRequest, @Context UriInfo uriInfo, @Context SecurityContext ctx) {
         log.debug("REST request to get a page of ResponseGroups");
         var page = pageRequest.toPage();
-        var sort = sortRequest.toSort();
         MultivaluedMap<String, String> param = uriInfo.getQueryParameters();
         Paged<ResponseGroupDTO> result = new Paged<>(0, 0, 0, 0, new ArrayList<>());
         if (param.containsKey("questionId")) {
@@ -219,6 +218,42 @@ public class ResponseGroupResource {
     @Path("/{id}")
     @RolesAllowed({AuthoritiesConstants.USER, AuthoritiesConstants.ADMIN})
     public Response getResponseGroup(@PathParam("id") Long id, @Context SecurityContext ctx) {
+        log.debug("REST request to get ResponseGroup : {}", id);
+        if (!securityService.canAccess(ctx, id, ResponseGroup.class)) {
+            return Response.status(403, "Current user cannot access to this resource").build();
+        }
+        Optional<ResponseGroupDTO> responseGroupDTO = responseGroupService.findOne(id);
+        return ResponseUtil.wrapOrNotFound(responseGroupDTO);
+    }
+
+     /**
+     * {@code GET  /responseGroups/:id} : get the "id" responseGroup.
+     *
+     * @param id the id of the responseGroupDTO to retrieve.
+     * @return the {@link Response} with status {@code 200 (OK)} and with body the responseGroupDTO, or with status {@code 404 (Not Found)}.
+     */
+    @GET
+    @Path("/question/{questionId}")
+    @RolesAllowed({AuthoritiesConstants.USER, AuthoritiesConstants.ADMIN})
+    public Response getResponseGroupByQuestionId(@PathParam("questionId") Long questionId, @Context SecurityContext ctx) {
+        log.debug("REST request to get ResponseGroup : {}", questionId);
+        if (!securityService.canAccess(ctx, questionId, ResponseGroup.class)) {
+            return Response.status(403, "Current user cannot access to this resource").build();
+        }
+        Optional<ResponseGroupDTO> responseGroupDTO = responseGroupService.findOne(questionId);
+        return ResponseUtil.wrapOrNotFound(responseGroupDTO);
+    }
+
+     /**
+     * {@code GET  /responseGroups/:id} : get the "id" responseGroup.
+     *
+     * @param id the id of the responseGroupDTO to retrieve.
+     * @return the {@link Response} with status {@code 200 (OK)} and with body the responseGroupDTO, or with status {@code 404 (Not Found)}.
+     */
+    @GET
+    @Path("/{id}")
+    @RolesAllowed({AuthoritiesConstants.USER, AuthoritiesConstants.ADMIN})
+    public Response getResponseGroupByPredictionId(@PathParam("id") Long id, @Context SecurityContext ctx) {
         log.debug("REST request to get ResponseGroup : {}", id);
         if (!securityService.canAccess(ctx, id, ResponseGroup.class)) {
             return Response.status(403, "Current user cannot access to this resource").build();
