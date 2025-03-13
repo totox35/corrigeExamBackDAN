@@ -7,15 +7,18 @@ import jakarta.json.bind.annotation.JsonbTransient;
 import io.quarkus.runtime.annotations.RegisterForReflection;
 
 import jakarta.persistence.*;
-
-import java.io.IOException;
 import java.io.Serializable;
 import java.util.List;
 import java.util.Set;
+import java.util.Arrays;
 import java.util.stream.Collectors;
+import java.util.ArrayList;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
+// Add these imports for JSON handling
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
+import java.io.IOException;
 
 /**
  * A Response Group.
@@ -26,6 +29,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 public class ResponseGroup extends PanacheEntityBase implements Serializable {
 
     private static final long serialVersionUID = 1L;
+    private static final ObjectMapper objectMapper = new ObjectMapper();
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -36,20 +40,88 @@ public class ResponseGroup extends PanacheEntityBase implements Serializable {
     @JsonbTransient
     public Question question;
 
-    @Column(name="prediction_ids", columnDefinition = "text")
+    // Store as JSON string in database
+    @Column(name="prediction_ids")
     private String predictionIdsJson;
 
+    // Store as JSON string in database
+    @Column(name="average_embedding")
+    private String averageEmbeddingJson;
+
+    // Transient fields for use in Java code
     @Transient
     public Long[] predictionIds;
 
-    @Column(name="average_embedding", columnDefinition = "longtext")
-    private String averageEmbeddingJson;
-    
-    // Add a transient field that's used in your Java code
     @Transient
     public Double[] averageEmbedding;
 
+    // Convert JSON to arrays when loading from database
+    @PostLoad
+    void onLoad() {
+        try {
+            if (predictionIdsJson != null && !predictionIdsJson.isEmpty()) {
+                if (predictionIdsJson.startsWith("[")) {
+                    // It's already JSON format
+                    predictionIds = objectMapper.readValue(predictionIdsJson, Long[].class);
+                } else {
+                    // It might be a comma-separated string
+                    predictionIds = Arrays.stream(predictionIdsJson.split(","))
+                        .map(String::trim)
+                        .filter(s -> !s.isEmpty())
+                        .map(Long::parseLong)
+                        .toArray(Long[]::new);
+                }
+            } else {
+                predictionIds = new Long[0];
+            }
 
+            if (averageEmbeddingJson != null && !averageEmbeddingJson.isEmpty()) {
+                if (averageEmbeddingJson.startsWith("[")) {
+                    // It's already JSON format
+                    averageEmbedding = objectMapper.readValue(averageEmbeddingJson, Double[].class);
+                } else {
+                    // It might be a comma-separated string
+                    averageEmbedding = Arrays.stream(averageEmbeddingJson.split(","))
+                        .map(String::trim)
+                        .filter(s -> !s.isEmpty())
+                        .map(Double::parseDouble)
+                        .toArray(Double[]::new);
+                }
+            } else {
+                averageEmbedding = new Double[0];
+            }
+        } catch (Exception e) {
+            System.err.println("Error converting JSON to arrays: " + e.getMessage());
+            e.printStackTrace();
+            // Initialize with empty arrays if conversion fails
+            predictionIds = new Long[0];
+            averageEmbedding = new Double[0];
+        }
+    }
+
+    // Convert arrays to JSON when saving to database
+    @PrePersist
+    @PreUpdate
+    void onSave() {
+        try {
+            if (predictionIds != null) {
+                predictionIdsJson = objectMapper.writeValueAsString(predictionIds);
+            } else {
+                predictionIdsJson = "[]";
+            }
+
+            if (averageEmbedding != null) {
+                averageEmbeddingJson = objectMapper.writeValueAsString(averageEmbedding);
+            } else {
+                averageEmbeddingJson = "[]";
+            }
+        } catch (Exception e) {
+            System.err.println("Error converting arrays to JSON: " + e.getMessage());
+            e.printStackTrace();
+        }
+    }
+
+    // Rest of your methods remain unchanged...
 
     @Override
     public boolean equals(Object o) {
@@ -72,63 +144,9 @@ public class ResponseGroup extends PanacheEntityBase implements Serializable {
         return "ResponseGroup{" +
             "id=" + id +
             ", question='" + question + "'" +
-            ", predictionIds='" + predictionIds + "'" +
-            ", averageEmbedding='" + averageEmbedding + "'" +
+            ", predictionIds='" + Arrays.toString(predictionIds) + "'" +
+            ", averageEmbedding='" + Arrays.toString(averageEmbedding) + "'" +
             "}";
-    }
-    
-    // Convert JSON to array when loading from database
-    @PostLoad
-    void onLoad() {
-        if (averageEmbeddingJson != null && !averageEmbeddingJson.isEmpty()) {
-            try {
-                ObjectMapper mapper = new ObjectMapper();
-                averageEmbedding = mapper.readValue(averageEmbeddingJson, Double[].class);
-            } catch (IOException e) {
-                // Handle error or log it
-                System.err.println("Error converting JSON to Double array: " + e.getMessage());
-            }
-        }
-        if (predictionIdsJson != null && !predictionIdsJson.isEmpty()) {
-            try {
-                ObjectMapper mapper = new ObjectMapper();
-                predictionIds = mapper.readValue(predictionIdsJson, Long[].class);
-            } catch (IOException e) {
-                System.err.println("Error converting JSON to Long array: " + e.getMessage());
-            }
-        }
-    }
-    
-    // Convert array to JSON when saving to database
-    @PrePersist
-    @PreUpdate
-    void onSave() {
-        if (averageEmbedding != null) {
-            try {
-                ObjectMapper mapper = new ObjectMapper();
-                averageEmbeddingJson = mapper.writeValueAsString(averageEmbedding);
-            } catch (JsonProcessingException e) {
-                // Handle error or log it
-                System.err.println("Error converting Double array to JSON: " + e.getMessage());
-            }
-        }
-        if (predictionIds != null) {
-            try {
-                ObjectMapper mapper = new ObjectMapper();
-                predictionIdsJson = mapper.writeValueAsString(predictionIds);
-            } catch (JsonProcessingException e) {
-                System.err.println("Error converting Long array to JSON: " + e.getMessage());
-            }
-        }
-    }
-    
-    // Add getter/setter for the averageEmbedding field
-    public Double[] getAverageEmbedding() {
-        return averageEmbedding;
-    }
-    
-    public void setAverageEmbedding(Double[] averageEmbedding) {
-        this.averageEmbedding = averageEmbedding;
     }
 
     public ResponseGroup update() {
@@ -148,6 +166,12 @@ public class ResponseGroup extends PanacheEntityBase implements Serializable {
             entity.question = responseGroup.question;
             entity.predictionIds = responseGroup.predictionIds;
             entity.averageEmbedding = responseGroup.averageEmbedding;
+            
+            // Explicitly trigger onSave
+            entity.onSave();
+            
+            // Force a flush to ensure changes are written
+            getEntityManager().flush();
         }
         return entity;
     }
@@ -157,14 +181,19 @@ public class ResponseGroup extends PanacheEntityBase implements Serializable {
             throw new IllegalArgumentException("responseGroup can't be null");
         }
         if (responseGroup.id == null) {
+            // Ensure onSave is called before persisting
+            responseGroup.onSave();
             persist(responseGroup);
+            // Force a flush to ensure changes are written
+            getEntityManager().flush();
             return responseGroup;
         } else {
             return update(responseGroup);
         }
     }
 
-
+    // Other query methods remain unchanged...
+    
     public static PanacheQuery<ResponseGroup> findByQuestionId(long qid) {
         return find("select rg from ResponseGroup rg where rg.question.id = ?1", qid);
     }
@@ -185,29 +214,29 @@ public class ResponseGroup extends PanacheEntityBase implements Serializable {
         return find("select rg from ResponseGroup rg where rg.question.id = ?1", questionId);
     }
     
-public static PanacheQuery<ResponseGroup> findByPrediction(Long predictionId) {
-    // Get all response groups
-    List<ResponseGroup> allGroups = listAll();
-    
-    // Filter using Java
-    List<ResponseGroup> filteredGroups = allGroups.stream()
-        .filter(rg -> {
-            if (rg.predictionIds == null) return false;
-            for (Long id : rg.predictionIds) {
-                if (id != null && id.equals(predictionId)) return true;
+    // Updated to use a Java-side filter for finding by prediction ID
+    public static PanacheQuery<ResponseGroup> findByPrediction(Long predictionId) {
+        List<ResponseGroup> all = listAll();
+        List<ResponseGroup> filtered = new ArrayList<>();
+        
+        for (ResponseGroup rg : all) {
+            if (rg.predictionIds != null) {
+                for (Long id : rg.predictionIds) {
+                    if (id != null && id.equals(predictionId)) {
+                        filtered.add(rg);
+                        break;
+                    }
+                }
             }
-            return false;
-        })
-        .collect(Collectors.toList());
-    
-    // Return as a PanacheQuery using find() with a filtered list id in clause
-    if (filteredGroups.isEmpty()) {
-        // Return an empty query if no matches
-        return find("id = -1"); // This will return an empty result
-    } else {
-        // Get IDs of filtered groups
-        List<Long> ids = filteredGroups.stream().map(rg -> rg.id).collect(Collectors.toList());
-        return find("id in ?1", ids);
+        }
+        
+        if (filtered.isEmpty()) {
+            // Return an empty result if no matches
+            return find("id = -1");
+        } else {
+            // Get the IDs of filtered groups and use them in a query
+            List<Long> ids = filtered.stream().map(rg -> rg.id).collect(Collectors.toList());
+            return find("id in ?1", ids);
+        }
     }
-}
 }
