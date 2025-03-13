@@ -2,13 +2,20 @@ package fr.istic.domain;
 
 import io.quarkus.hibernate.orm.panache.PanacheEntityBase;
 import io.quarkus.hibernate.orm.panache.PanacheQuery;
+import io.quarkus.panache.common.Parameters;
 import jakarta.json.bind.annotation.JsonbTransient;
 import io.quarkus.runtime.annotations.RegisterForReflection;
 
 import jakarta.persistence.*;
+
+import java.io.IOException;
 import java.io.Serializable;
 import java.util.List;
 import java.util.Set;
+import java.util.stream.Collectors;
+
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 /**
  * A Response Group.
@@ -29,10 +36,17 @@ public class ResponseGroup extends PanacheEntityBase implements Serializable {
     @JsonbTransient
     public Question question;
 
-    @Column(name="prediction_ids")
+    @Column(name="prediction_ids", columnDefinition = "text")
+    private String predictionIdsJson;
+
+    @Transient
     public Long[] predictionIds;
 
-    @Column(name="average_embedding")
+    @Column(name="average_embedding", columnDefinition = "longtext")
+    private String averageEmbeddingJson;
+    
+    // Add a transient field that's used in your Java code
+    @Transient
     public Double[] averageEmbedding;
 
 
@@ -61,6 +75,60 @@ public class ResponseGroup extends PanacheEntityBase implements Serializable {
             ", predictionIds='" + predictionIds + "'" +
             ", averageEmbedding='" + averageEmbedding + "'" +
             "}";
+    }
+    
+    // Convert JSON to array when loading from database
+    @PostLoad
+    void onLoad() {
+        if (averageEmbeddingJson != null && !averageEmbeddingJson.isEmpty()) {
+            try {
+                ObjectMapper mapper = new ObjectMapper();
+                averageEmbedding = mapper.readValue(averageEmbeddingJson, Double[].class);
+            } catch (IOException e) {
+                // Handle error or log it
+                System.err.println("Error converting JSON to Double array: " + e.getMessage());
+            }
+        }
+        if (predictionIdsJson != null && !predictionIdsJson.isEmpty()) {
+            try {
+                ObjectMapper mapper = new ObjectMapper();
+                predictionIds = mapper.readValue(predictionIdsJson, Long[].class);
+            } catch (IOException e) {
+                System.err.println("Error converting JSON to Long array: " + e.getMessage());
+            }
+        }
+    }
+    
+    // Convert array to JSON when saving to database
+    @PrePersist
+    @PreUpdate
+    void onSave() {
+        if (averageEmbedding != null) {
+            try {
+                ObjectMapper mapper = new ObjectMapper();
+                averageEmbeddingJson = mapper.writeValueAsString(averageEmbedding);
+            } catch (JsonProcessingException e) {
+                // Handle error or log it
+                System.err.println("Error converting Double array to JSON: " + e.getMessage());
+            }
+        }
+        if (predictionIds != null) {
+            try {
+                ObjectMapper mapper = new ObjectMapper();
+                predictionIdsJson = mapper.writeValueAsString(predictionIds);
+            } catch (JsonProcessingException e) {
+                System.err.println("Error converting Long array to JSON: " + e.getMessage());
+            }
+        }
+    }
+    
+    // Add getter/setter for the averageEmbedding field
+    public Double[] getAverageEmbedding() {
+        return averageEmbedding;
+    }
+    
+    public void setAverageEmbedding(Double[] averageEmbedding) {
+        this.averageEmbedding = averageEmbedding;
     }
 
     public ResponseGroup update() {
@@ -117,7 +185,29 @@ public class ResponseGroup extends PanacheEntityBase implements Serializable {
         return find("select rg from ResponseGroup rg where rg.question.id = ?1", questionId);
     }
     
-    public static PanacheQuery<ResponseGroup> findByPrediction(Long predictionId) {
-        return find("select rg from ResponseGroup rg where ?1 member of rg.predictionIds", predictionId);
+public static PanacheQuery<ResponseGroup> findByPrediction(Long predictionId) {
+    // Get all response groups
+    List<ResponseGroup> allGroups = listAll();
+    
+    // Filter using Java
+    List<ResponseGroup> filteredGroups = allGroups.stream()
+        .filter(rg -> {
+            if (rg.predictionIds == null) return false;
+            for (Long id : rg.predictionIds) {
+                if (id != null && id.equals(predictionId)) return true;
+            }
+            return false;
+        })
+        .collect(Collectors.toList());
+    
+    // Return as a PanacheQuery using find() with a filtered list id in clause
+    if (filteredGroups.isEmpty()) {
+        // Return an empty query if no matches
+        return find("id = -1"); // This will return an empty result
+    } else {
+        // Get IDs of filtered groups
+        List<Long> ids = filteredGroups.stream().map(rg -> rg.id).collect(Collectors.toList());
+        return find("id in ?1", ids);
     }
+}
 }

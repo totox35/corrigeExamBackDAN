@@ -90,6 +90,7 @@ public class ResponseGroupService {
     public Optional<ResponseGroupDTO> findByPrediction(Long predictionId) {
         log.debug("Request to get ResponseGroup containing prediction : {}", predictionId);
         ResponseGroup responseGroup = ResponseGroup.findByPrediction(predictionId).firstResult();
+        // Return an empty Optional instead of null
         return Optional.ofNullable(responseGroup)
             .map(responseGroupMapper::toDto);
     }

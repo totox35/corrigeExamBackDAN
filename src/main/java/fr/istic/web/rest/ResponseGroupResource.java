@@ -205,23 +205,24 @@ public class ResponseGroupResource {
         List<ResponseGroupDTO> responseGroupDTOs = responseGroupService.findByQuestion(questionId);
         return Response.ok(responseGroupDTOs).build();
     }
-     /**
-     * {@code GET  /responseGroups/:id} : get the "id" responseGroup.
-     *
-     * @param id the id of the responseGroupDTO to retrieve.
-     * @return the {@link Response} with status {@code 200 (OK)} and with body the responseGroupDTO, or with status {@code 404 (Not Found)}.
-     */
     @GET
-    @Path("/prediction/{predictionId}")
-    @RolesAllowed({AuthoritiesConstants.USER, AuthoritiesConstants.ADMIN})
-    public Response getResponseGroupByPredictionId(@PathParam("predictionId") Long predictionId, @Context SecurityContext ctx) {
-        log.debug("REST request to get ResponseGroup : {}", predictionId);
-        if (!securityService.canAccess(ctx, predictionId, ResponseGroup.class)) {
-            return Response.status(403, "Current user cannot access to this resource").build();
-        }
-        Optional<ResponseGroupDTO> responseGroupDTO = responseGroupService.findByPrediction(predictionId);
-        return ResponseUtil.wrapOrNotFound(responseGroupDTO);
+@Path("/prediction/{predictionId}")
+@RolesAllowed({AuthoritiesConstants.USER, AuthoritiesConstants.ADMIN})
+public Response getResponseGroupByPredictionId(@PathParam("predictionId") Long predictionId, @Context SecurityContext ctx) {
+    log.debug("REST request to get ResponseGroup : {}", predictionId);
+    if (!securityService.canAccess(ctx, predictionId, ResponseGroup.class)) {
+        return Response.status(403, "Current user cannot access to this resource").build();
     }
+    Optional<ResponseGroupDTO> responseGroupDTO = responseGroupService.findByPrediction(predictionId);
+    
+    // Return an empty 200 instead of 404 when Optional is empty
+    if (responseGroupDTO.isPresent()) {
+        return Response.ok(responseGroupDTO.get()).build();
+    } else {
+        // Return empty 200 OK response
+        return Response.ok().build();
+    }
+}
 
     /**
      * {@code GET  /responseGroups} : get all the responseGroups.
