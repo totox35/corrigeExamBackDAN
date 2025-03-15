@@ -1,0 +1,225 @@
+import cv2
+import numpy as np
+import json
+import sys
+import base64
+import os
+from scipy import ndimage
+from skimage.filters import threshold_sauvola
+from skimage.morphology import closing, square
+
+def segment_handwritten_lines_diva(image_path):
+    # Read image
+    img = cv2.imread(image_path)
+    if img is None:
+        raise Exception(f"Could not read image from {image_path}")
+    
+    # Create visualization copy
+    vis_img = img.copy()
+    
+    # Convert to grayscale
+    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    
+    # Apply Sauvola thresholding (better for handwritten documents)
+    binary = threshold_sauvola(gray, window_size=25)
+    binary_img = (gray > binary).astype(np.uint8) * 255
+    binary_inv = 255 - binary_img  # Invert so text is white
+    
+    # Apply horizontal closing to connect characters in lines
+    horizontal_size = int(img.shape[1] / 20)  # Adjust based on image size
+    horizontal_kernel = np.ones((1, horizontal_size), np.uint8)
+    connected_lines = cv2.morphologyEx(binary_inv, cv2.MORPH_CLOSE, horizontal_kernel)
+    
+    # Remove small objects (noise)
+    min_size = 100
+    labeled_array, num_features = ndimage.label(connected_lines)
+    sizes = ndimage.sum(connected_lines, labeled_array, range(1, num_features + 1))
+    mask_size = np.zeros(num_features + 1, dtype=bool)
+    mask_size[1:] = sizes > min_size
+    cleaned_binary = mask_size[labeled_array]
+    cleaned_binary = cleaned_binary.astype(np.uint8) * 255
+    
+    # Find contours - each contour should be a text line
+    contours, _ = cv2.findContours(cleaned_binary, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    
+    # Extract line regions from contours
+    line_regions = []
+    
+    for contour in contours:
+        x, y, w, h = cv2.boundingRect(contour)
+        
+        # Filter by size - adjust these parameters based on your document
+        if w > img.shape[1] * 0.2 and h > 15:  # At least 20% of width & 15px height
+            # Add margins
+            margin_x = 5
+            margin_y = 5
+            x_start = max(0, x - margin_x)
+            y_start = max(0, y - margin_y)
+            x_end = min(img.shape[1], x + w + margin_x)
+            y_end = min(img.shape[0], y + h + margin_y)
+            
+            # Draw on visualization
+            cv2.rectangle(vis_img, (x_start, y_start), (x_end, y_end), (0, 255, 0), 2)
+            
+            # Extract region
+            line_img = img[y_start:y_end, x_start:x_end]
+            line_regions.append({
+                'image': line_img,
+                'coords': (y_start, x_start)
+            })
+    
+    # Sort by vertical position
+    line_regions.sort(key=lambda x: x['coords'][0])
+    
+    # Extract just the images
+    line_images = [region['image'] for region in line_regions]
+    
+    # If no lines detected or very few lines, try fallback
+    if len(line_images) < 2:
+        print("Few or no lines detected, trying horizontal projection...")
+        # Enhance contrast for better text detection
+        clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
+        enhanced = clahe.apply(gray)
+        
+        # Use horizontal projection profile
+        h_proj = np.sum(binary_inv, axis=1)
+        
+        # Smooth the projection
+        h_proj_smooth = np.convolve(h_proj, np.ones(15)/15, mode='same')
+        
+        # Find significant peaks (text lines)
+        from scipy.signal import find_peaks
+        peaks, _ = find_peaks(h_proj_smooth, height=np.max(h_proj_smooth)*0.15, distance=20)
+        
+        # Create line regions based on peaks
+        if len(peaks) > 0:
+            line_images = []
+            for i in range(len(peaks)):
+                # Determine line region (from midpoint between previous peak to midpoint to next peak)
+                if i == 0:
+                    top = 0
+                else:
+                    top = (peaks[i-1] + peaks[i]) // 2
+                
+                if i == len(peaks) - 1:
+                    bottom = img.shape[0]
+                else:
+                    bottom = (peaks[i] + peaks[i+1]) // 2
+                
+                # Add margin
+                top = max(0, top - 5)
+                bottom = min(img.shape[0], bottom + 5)
+                
+                # Skip very narrow regions
+                if bottom - top < 15:
+                    continue
+                
+                # Draw on visualization
+                cv2.rectangle(vis_img, (0, top), (img.shape[1], bottom), (0, 0, 255), 2)
+                
+                # Extract line
+                line_img = img[top:bottom, :]
+                line_images.append(line_img)
+    
+    # Save visualization
+    vis_path = os.path.join(os.path.dirname(image_path), "diva_segmentation.png")
+    cv2.imwrite(vis_path, vis_img)
+    
+    return line_images, vis_path
+
+def enhance_line_images(line_images):
+    """Apply image enhancements to improve line images"""
+    enhanced_lines = []
+    
+    for img in line_images:
+        # Convert to grayscale if needed
+        if len(img.shape) == 3:
+            gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+        else:
+            gray = img
+        
+        # Apply CLAHE to enhance contrast
+        clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
+        enhanced = clahe.apply(gray)
+        
+        # Convert back to BGR for consistency
+        enhanced_bgr = cv2.cvtColor(enhanced, cv2.COLOR_GRAY2BGR)
+        enhanced_lines.append(enhanced_bgr)
+    
+    return enhanced_lines
+
+def refine_extract_lines(image_path):
+    """Extract handwritten text lines with refinements"""
+    # Get initial line segmentation
+    line_images, vis_path = segment_handwritten_lines_diva(image_path)
+    
+    # Enhance line images
+    if len(line_images) > 0:
+        enhanced_lines = enhance_line_images(line_images)
+        return enhanced_lines, vis_path
+    else:
+        return [], vis_path
+
+if __name__ == "__main__":
+    if len(sys.argv) < 2:
+        print(json.dumps({"error": "No image path provided"}))
+        sys.exit(1)
+    
+    image_path = sys.argv[1]
+    try:
+        # Process the image and extract refined lines
+        refined_lines, vis_path = refine_extract_lines(image_path)
+        
+        # Create outputs directory if it doesn't exist
+        output_dir = "outputs"
+        if not os.path.exists(output_dir):
+            os.makedirs(output_dir)
+        
+        # Save individual line images
+        image_paths = []
+        for i, line_img in enumerate(refined_lines):
+            output_path = os.path.join(output_dir, f"line_{i+1}.png")
+            cv2.imwrite(output_path, line_img)
+            image_paths.append(output_path)
+        
+        # Create visualization with all lines
+        if refined_lines:
+            max_width = max(img.shape[1] for img in refined_lines)
+            total_height = sum(img.shape[0] for img in refined_lines) + (len(refined_lines) - 1) * 10
+            
+            all_lines_img = np.ones((total_height, max_width, 3), dtype=np.uint8) * 255
+            
+            y_offset = 0
+            for line_img in refined_lines:
+                h, w = line_img.shape[:2]
+                all_lines_img[y_offset:y_offset+h, 0:w] = line_img
+                y_offset += h + 10
+                
+            all_lines_path = os.path.join(output_dir, "all_lines.png")
+            cv2.imwrite(all_lines_path, all_lines_img)
+        else:
+            all_lines_path = None
+        
+        # Convert the refined lines to base64-encoded strings
+        base64_lines = []
+        for line_img in refined_lines:
+            _, buffer = cv2.imencode('.png', line_img)
+            base64_line = base64.b64encode(buffer).decode('utf-8')
+            base64_lines.append(base64_line)
+        
+        # Output the result as JSON
+        result = {
+            "refinedLines": base64_lines,
+            "savedImages": image_paths,
+            "visualizationImage": all_lines_path if all_lines_path else "",
+            "detectionVisualization": vis_path,
+            "lineCount": len(refined_lines)
+        }
+        print(json.dumps(result))
+        
+    except Exception as e:
+        # Handle errors and output them as JSON
+        import traceback
+        traceback_str = traceback.format_exc()
+        print(json.dumps({"error": str(e), "traceback": traceback_str}))
+        sys.exit(1)
