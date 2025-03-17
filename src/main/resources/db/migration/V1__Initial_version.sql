@@ -467,6 +467,8 @@ CREATE TABLE `zone` (
   `height` int DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
+-- --------------------------------------------------------
+
 --
 -- Structure de la table `prediction`
 --
@@ -480,7 +482,22 @@ CREATE TABLE IF NOT EXISTS prediction (
     zonegeneratedid VARCHAR(255),
     student_id VARCHAR(255),
     exam_id VARCHAR(255),
-    image_data LONGTEXT
+    image_data LONGTEXT,
+    confidence DECIMAL(10, 2) NOT NULL DEFAULT 0.00
+);
+
+-- --------------------------------------------------------
+
+--
+-- Structure de la table `response_group`
+--
+
+CREATE TABLE response_group (
+    id BIGINT(20) NOT NULL AUTO_INCREMENT,
+    question_id VARCHAR(255) DEFAULT NULL,
+    prediction_ids TEXT DEFAULT NULL,
+    average_embedding LONGTEXT DEFAULT NULL,
+    PRIMARY KEY (id)
 );
 
 -- --------------------------------------------------------
