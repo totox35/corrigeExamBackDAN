@@ -8,6 +8,7 @@ import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -60,13 +61,30 @@ public class PythonControllerEmbedding {
 
         try {
             log.info("Submitting complete data...");
-            List<String> texts = (List<String>) requestData.get("texts");
-            if (texts == null || texts.isEmpty()) {
+            Object textsObj = requestData.get("texts");
+            List<String> texts = new ArrayList<String>();
+            if (textsObj instanceof List<?>) {
+                for (Object item : (List<?>) textsObj) {
+                    if (item instanceof String) {
+                        texts.add((String) item);
+                    } else {
+                        return Response.status(Response.Status.BAD_REQUEST)
+                                .entity(Map.of("error", "Invalid type for items in 'texts' list."))
+                                .build();
+                    }
+                }
+            } else {
+                return Response.status(Response.Status.BAD_REQUEST)
+                        .entity(Map.of("error", "Invalid type for 'texts' in the request."))
+                        .build();
+            }
+    
+            if (texts.isEmpty()) {
                 return Response.status(Response.Status.BAD_REQUEST)
                         .entity(Map.of("error", "No text data provided in the request."))
                         .build();
             }
-
+    
             String textsJson = new JSONArray(texts).toString();
 
             // Send data to running process
