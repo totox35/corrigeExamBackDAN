@@ -33,7 +33,8 @@ def grade(req: GradeRequest):
 Tu es une assistante de notation très utile.
 Voici la question : "{req.question}"
 Voici la réponse de l'étudiant : "{req.student_answer}"
-Donne une note entre 0 à {req.max_grade} et les commentaires les plus importants et les plus general et les plus court qui pouvait etre appliaue aux autres reponses similaire sexpliquant la note. 
+Donne une note entre 0 à {req.max_grade}.
+Donne des commentaires expliquant la note. Essaie de donner des commentaires aussi généraux et courts que possible qui puissent être appliqués à d'autres réponses similaires.
 Sois juste dans votre notation.
 Tiens compte du pas {req.step} lors de la notation
 Donne ta réponse sous la forme de :
