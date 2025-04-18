@@ -40,6 +40,12 @@ class GradeRequest(BaseModel):
     step: float
     existing_comments: Optional[List[TextComment]] = Field(default_factory=list)
 
+class CommentRequest(BaseModel):
+    question: str
+    # notes: str
+    student_answers: List[str]
+    nb_comments: int
+
 @app.post("/api/grade")
 def grade(req: GradeRequest):
     
@@ -59,12 +65,65 @@ Donne une note entre 0 à {req.max_grade}.
 Donne des commentaires expliquant la note. 
 Si il y a deja des commentaires aui existe tu peux choisir entre ces commentaires et retourner la commentaire exactement  sans le changer meme s'il y a des erreurs grammatical dans les commentaires, les commentaires existants: {comments_text}. 
 Essaie de donner des commentaires aussi généraux et courts que possible qui puissent être appliqués à d'autres réponses similaires. 
-Essaie de choisir le commentaire deja existant,s'il y a un qui est assez proche que tu veux proposer. 
+Choisit le commentaire deja existant,s'il y a un qui est assez proche que tu veux proposer. 
 Oublie pas de donner un titre pour chaque commentaire!
 Sois juste dans votre notation.
 Tiens compte du pas {req.step} lors de la notation
 Donne ta réponse sous la forme de :
 Note : X/{req.max_grade}
+Titre du commentaire 1: ...
+Commentaire 1: ... 
+Titre du commentaire 2: ...
+Commentaire 2: ...
+Titre du commentaire n: ...
+Commentaire n: ...
+"""
+
+    # Requête vers l'API Ragarenn
+    url = BASE_URL + "/api/chat/completions"
+    
+    headers = {
+        "Content-Type": "application/json",
+        "Authorization": f"Bearer {API_KEY}"
+    }
+    
+    payload = {
+        # "model": "codestral:latest",  
+        "model": "neuralmagic/Meta-Llama-3.1-8B-Instruct-FP8",
+        "messages": [
+            {"role": "system", "content": "Tu es une assistante de notation précise et objective."},
+            {"role": "user", "content": prompt}
+        ]
+    }
+    
+    try:
+        response = requests.post(
+            url,
+            headers=headers,
+            json=payload  # Utilisez json au lieu de data=json.dumps(payload)
+        )
+        
+        if response.status_code == 200:
+            result = response.json()
+            return {"response": result["choices"][0]["message"]["content"]}
+        else:
+            return {"error": f"Erreur API: {response.status_code}", "details": response.text}
+    
+    except Exception as e:
+        return {"error": f"Exception: {str(e)}"}
+
+
+
+@app.post("/api/propose_comments")
+def propose_comments(req: CommentRequest):
+
+    prompt = f"""
+Tu es une assistante de notation très utile.
+Voici la question : "{req.question}"
+Voici les réponses des étudiant : "{req.student_answers}"
+Donne {req.nb_comments} commentaires qui eut etre utilise pour corriger les reponses des etudiants. 
+Oublie pas de donner un titre pour chaque commentaire!
+Donne ta réponse sous la forme de :
 Titre du commentaire 1: ...
 Commentaire 1: ... 
 Titre du commentaire 2: ...
