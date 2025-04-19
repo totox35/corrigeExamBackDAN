@@ -118,20 +118,30 @@ Commentaire n: ...
 def propose_comments(req: CommentRequest):
 
     prompt = f"""
-Tu es une assistante de notation très utile.
-Voici la question : "{req.question}"
-Voici les réponses des étudiant : "{req.student_answers}"
-Donne {req.nb_comments} commentaires qui eut etre utilise pour corriger les reponses des etudiants. 
-Oublie pas de donner un titre pour chaque commentaire!
-Donne ta réponse sous la forme de :
-Titre du commentaire 1: ...
-Commentaire 1: ... 
-Titre du commentaire 2: ...
-Commentaire 2: ...
-Titre du commentaire n: ...
-Commentaire n: ...
-"""
+Tu es une assistante pédagogique spécialisée dans l'évaluation.
 
+QUESTION: "{req.question}"
+
+RÉPONSES DES ÉTUDIANTS: "{req.student_answers}"
+
+TÂCHE:
+- Génère exactement {req.nb_comments} commentaires courts et précis pouvant être utilisés pour évaluer différentes réponses d'étudiants.
+- Chaque commentaire doit être concis (3-10 mots) et applicable à différents types de réponses.
+- Les commentaires doivent couvrir à la fois les points forts et les erreurs communes.
+- Assure-toi que les commentaires soient pertinents pour la matière de la question.
+
+FORMAT EXACT REQUIS (respecte strictement ce format):
+Titre du commentaire 1: [Titre bref et descriptif]
+Commentaire 1: [Commentaire court et précis]
+
+Titre du commentaire 2: [Titre bref et descriptif]
+Commentaire 2: [Commentaire court et précis]
+
+[...]
+
+Titre du commentaire {req.nb_comments}: [Titre bref et descriptif]
+Commentaire {req.nb_comments}: [Commentaire court et précis]
+"""
     # Requête vers l'API Ragarenn
     url = BASE_URL + "/api/chat/completions"
     
