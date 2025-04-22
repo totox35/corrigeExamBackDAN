@@ -62,7 +62,7 @@ public class PythonControllerEmbedding {
         try {
             log.info("Submitting complete data...");
             Object textsObj = requestData.get("texts");
-            List<String> texts = new ArrayList<String>();
+            List<String> texts = new ArrayList<>();
             if (textsObj instanceof List<?>) {
                 for (Object item : (List<?>) textsObj) {
                     if (item instanceof String) {
@@ -95,9 +95,11 @@ public class PythonControllerEmbedding {
             // Read output from running process
             StringBuilder output = new StringBuilder();
             String line;
-            while ((line = processReader.readLine()) != null) {
+            int linesRead = 0;
+            while (linesRead < texts.size() && (line = processReader.readLine()) != null) {
                 output.append(line).append("\n");
                 log.info("Python Output: " + line);
+                linesRead++;
             }
 
             // Extract embeddings
