@@ -37,35 +37,33 @@ public class QuestionService {
     @Inject
     QuestionMapper questionMapper;
 
-
     @Inject
     ExamMapper examMapper;
 
     @Inject
     ZoneService zoneService;
 
-
     @Transactional
     public QuestionDTO persistOrUpdate(QuestionDTO questionDTO) {
         log.debug("Request to save Question : {}", questionDTO);
         var question = questionMapper.toEntity(questionDTO);
 
-        if (question.id!= null){
+        if (question.id != null) {
             Question q2 = Question.findById(question.id);
-            if (q2 != null && question.gradeType == GradeType.HYBRID && (
-                q2.gradeType != question.gradeType || q2.defaultpoint != question.defaultpoint || q2.quarterpoint != q2.quarterpoint
-            ) ){
+            if (q2 != null && question.gradeType == GradeType.HYBRID && (q2.gradeType != question.gradeType
+                    || q2.defaultpoint != question.defaultpoint || q2.quarterpoint != q2.quarterpoint)) {
 
-            List<StudentResponse> sts= StudentResponse.findAllByQuestionIdfetchAnswerfetchHybridCommand(question.id).list();
-            for (StudentResponse st : sts ){
-                var currentNote = 0.0;
+                List<StudentResponse> sts = StudentResponse
+                        .findAllByQuestionIdfetchAnswerfetchHybridCommand(question.id).list();
+                for (StudentResponse st : sts) {
+                    var currentNote = 0.0;
                     var absoluteNote2Add = 0.0;
                     double pourcentage = 0.0;
-                    if (question != null && question.defaultpoint != null){
-                        pourcentage = question.defaultpoint.doubleValue() *4;
+                    if (question != null && question.defaultpoint != null) {
+                        pourcentage = question.defaultpoint.doubleValue() * 4;
                     }
 
-                for( Answer2HybridGradedComment an2 : st.hybridcommentsValues){
+                    for (Answer2HybridGradedComment an2 : st.hybridcommentsValues) {
                         var stepValue = an2.stepValue.doubleValue();
                         if (stepValue > 0) {
                             var relative = an2.hybridcomments.relative != null ? an2.hybridcomments.relative : false;
@@ -73,20 +71,20 @@ public class QuestionService {
                             var grade = an2.hybridcomments.grade != null ? an2.hybridcomments.grade.doubleValue() : 0.0;
 
                             if (relative) {
-                              pourcentage = pourcentage + (stepValue / step) * grade;
+                                pourcentage = pourcentage + (stepValue / step) * grade;
                             } else {
-                              absoluteNote2Add = absoluteNote2Add + (stepValue / step) * grade;
+                                absoluteNote2Add = absoluteNote2Add + (stepValue / step) * grade;
                             }
-                          }
+                        }
                     }
-                    var point = question.quarterpoint !=null ? question.quarterpoint.doubleValue(): 0.0;
+                    var point = question.quarterpoint != null ? question.quarterpoint.doubleValue() : 0.0;
                     currentNote = (point * pourcentage) / 400.0 + absoluteNote2Add;
                     if (currentNote > point && !st.question.canExceedTheMax) {
                         currentNote = point;
                     } else if (currentNote < 0 && !st.question.canBeNegative) {
                         currentNote = 0;
                     }
-                    st.quarternote = Double.valueOf(currentNote*100).intValue();
+                    st.quarternote = Double.valueOf(currentNote * 100).intValue();
                     st.persistOrUpdate();
                 }
             }
@@ -103,13 +101,12 @@ public class QuestionService {
         return questionMapper.toDto(cleanAllCorrectionAndComment(question));
     }
 
-
     public Question cleanAllCorrectionAndComment(Question question) {
         List<GradedComment> gradeComment = new ArrayList<GradedComment>();
         List<TextComment> textComments = new ArrayList<TextComment>();
         gradeComment.addAll(GradedComment.findByQuestionId(question.id).list());
         textComments.addAll(TextComment.findByQuestionId(question.id).list());
-        Set<StudentResponse> srs= this.updateCorrectionAndAnswer(question, gradeComment, textComments);
+        Set<StudentResponse> srs = this.updateCorrectionAndAnswer(question, gradeComment, textComments);
         List<Long> gradeCommentids = gradeComment.stream().map(gc -> gc.id).collect(Collectors.toList());
         List<Long> textCommentsids = textComments.stream().map(gc -> gc.id).collect(Collectors.toList());
 
@@ -123,11 +120,8 @@ public class QuestionService {
         qids.add(question.id);
         HybridGradedComment.deleteByQIds(qids);
 
-
         return question;
     }
-
-
 
     public Set<StudentResponse> updateCorrectionAndAnswer(Question question, List<GradedComment> gradeComment,
             List<TextComment> textComments) {
@@ -225,5 +219,9 @@ public class QuestionService {
                 .map(question -> questionMapper.toDto((Question) question));
     }
 
-
+    public Paged<QuestionDTO> findQuestionByZoneOrTitleZoneId(long zoneId) {
+        log.debug("Request to get Questions by ZoneId or TitleZoneId");
+        return new Paged<>(Question.findQuestionByZoneOrTitleZoneId(zoneId).page(Page.of(0, 100)))
+                .map(question -> questionMapper.toDto((Question) question));
+    }
 }

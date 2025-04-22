@@ -31,7 +31,9 @@ public class QuestionDTO implements Serializable {
     public Integer defaultpoint;
 
     public Long zoneId;
+    public Long titleZoneId;
     public ZoneDTO zoneDTO;
+    public ZoneDTO titleZoneDTO;
     public Long typeId;
     public String typeAlgoName;
     public Long examId;

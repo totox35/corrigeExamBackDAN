@@ -63,11 +63,14 @@ public class Question extends PanacheEntityBase implements Serializable {
     @Column(name = "mustbeignoreinglobalscale")
     public Boolean mustBeIgnoreInGlobalScale;
 
-
-
     @OneToOne(cascade = CascadeType.REMOVE)
     @JoinColumn(unique = true)
-    public Zone zone;
+    public Zone zone;  // Zone de réponse
+
+    @OneToOne(cascade = CascadeType.REMOVE)
+    @JoinColumn(unique = true, name = "title_zone_id")
+    public Zone titleZone;  // Zone d'intitulé
+
 
     @OneToMany(mappedBy = "question",cascade = CascadeType.REMOVE)
     // @Cache(usage = CacheConcurrencyStrategy.READ_WRITE)
@@ -188,5 +191,7 @@ public class Question extends PanacheEntityBase implements Serializable {
         return find("select q from Question q join q.exam.course.profs as u where q.id =?1 and u.login =?2", qId, login);
     }
 
-
+    public static PanacheQuery<Question> findQuestionByZoneOrTitleZoneId(long zoneId) {
+        return find("select question from Question question where question.zone.id = ?1 or question.titleZone.id = ?1", zoneId);
+    }
 }

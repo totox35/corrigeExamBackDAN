@@ -14,6 +14,8 @@ public interface QuestionMapper extends EntityMapper<QuestionDTO, Question> {
 
     @Mapping(source = "zone.id", target = "zoneId")
     @Mapping(source = "zone", target = "zoneDTO")
+    @Mapping(source = "titleZone.id", target = "titleZoneId")
+    @Mapping(source = "titleZone", target = "titleZoneDTO")
     @Mapping(source = "type.id", target = "typeId")
     @Mapping(source = "type.algoName", target = "typeAlgoName")
     @Mapping(source = "exam.id", target = "examId")
@@ -23,6 +25,7 @@ public interface QuestionMapper extends EntityMapper<QuestionDTO, Question> {
     QuestionDTO toDto(Question question);
 
     @Mapping(source = "zoneId", target = "zone")
+    @Mapping(source = "titleZoneId", target = "titleZone")
     @Mapping(target = "textcomments", ignore = true)
     @Mapping(target = "gradedcomments", ignore = true)
   //  @Mapping(target = "zoneDTO", ignore = true)
