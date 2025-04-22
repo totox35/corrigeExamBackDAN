@@ -1011,6 +1011,9 @@ alter table question add column canbenegative bit(1) NOT NULL  default 0;
 
 alter table question add column mustbeignoreinglobalscale bit(1) NOT NULL  default 0;
 
+alter table question add column title_zone_id BIGINT;
+
+alter table question add constraint fk_question_title_zone_id foreign key (title_zone_id) references zone(id);
 
 COMMIT;
 
