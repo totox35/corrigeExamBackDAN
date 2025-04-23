@@ -1015,6 +1015,14 @@ alter table question add column title_zone_id BIGINT;
 
 alter table question add constraint fk_question_title_zone_id foreign key (title_zone_id) references zone(id);
 
+alter table question drop foreign key fk_question_title_zone_id;
+
+alter table question drop foreign key fk_question_zone_id;
+
+alter table question add constraint fk_question_title_zone_id foreign key (title_zone_id) references zone(id) on delete cascade;
+
+alter table question add constraint fk_question_zone_id foreign key (zone_id) references zone(id) on delete cascade;
+
 COMMIT;
 
 
