@@ -1023,6 +1023,15 @@ alter table question add constraint fk_question_title_zone_id foreign key (title
 
 alter table question add constraint fk_question_zone_id foreign key (zone_id) references zone(id) on delete cascade;
 
+-- Add 'generated' column to the comment tables
+alter table `graded_comment` add column `generated` BIT DEFAULT 0;
+
+alter table `hybrid_graded_comment` add column `generated` BIT DEFAULT 0;
+
+alter table `text_comment` add column `generated` BIT DEFAULT 0;
+
+-- No alter for the table 'comments' as it is used to store comments related to a student --
+
 COMMIT;
 
 

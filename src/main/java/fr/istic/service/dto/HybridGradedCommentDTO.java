@@ -26,6 +26,8 @@ public class HybridGradedCommentDTO implements Serializable {
 
     public Long questionId;
 
+    public Boolean generated;
+
     @Override
     public boolean equals(Object o) {
         if (this == o) {
@@ -47,23 +49,14 @@ public class HybridGradedCommentDTO implements Serializable {
     public String toString() {
         return (
             "HybridGradedCommentDTO{" +
-            "id=" +
-            id +
-            ", text='" +
-            text +
-            "'" +
-            ", description='" +
-            description +
-            "'" +
-            ", grade=" +
-            grade +
-            ", relative='" +
-            relative +
-            "'" +
-            ", step=" +
-            step +
-            ", questionId=" +
-            questionId +
+            "id=" + id +
+            ", text='" + text + "'" +
+            ", description='" + description + "'" +
+            ", grade=" + grade +
+            ", relative='" + relative + "'" +
+            ", step=" + step + 
+            ", questionId=" + questionId +
+            ", generated=" + generated + 
             "}"
         );
     }

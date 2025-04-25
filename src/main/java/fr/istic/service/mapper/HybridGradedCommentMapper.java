@@ -16,6 +16,7 @@ public interface HybridGradedCommentMapper extends EntityMapper<HybridGradedComm
     @Mapping(source = "questionId", target = "question")
     @Mapping(target = "valueAnswers", ignore = true)
     @Mapping(source = "grade", target = "grade", qualifiedByName = "point2quarterpoint")
+    @Mapping(target = "generated")
 
     HybridGradedComment toEntity(HybridGradedCommentDTO hybridGradedCommentDTO);
 

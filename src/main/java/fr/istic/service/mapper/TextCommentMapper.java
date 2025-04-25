@@ -17,6 +17,7 @@ public interface TextCommentMapper extends EntityMapper<TextCommentDTO, TextComm
 
     @Mapping(source = "questionId", target = "question")
     @Mapping(target = "studentResponses", ignore = true)
+    @Mapping(target = "generated")
     TextComment toEntity(TextCommentDTO textCommentDTO);
 
     default TextComment fromId(Long id) {

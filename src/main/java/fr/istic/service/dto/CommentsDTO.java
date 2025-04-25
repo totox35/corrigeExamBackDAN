@@ -19,6 +19,8 @@ public class CommentsDTO implements Serializable {
 
     public Long studentResponseId;
 
+    public Boolean generated;
+
     @Override
     public boolean equals(Object o) {
         if (this == o) {
@@ -43,6 +45,7 @@ public class CommentsDTO implements Serializable {
             ", zonegeneratedid='" + zonegeneratedid + "'" +
             ", jsonData='" + jsonData + "'" +
             ", studentResponseId=" + studentResponseId +
+            ", generated=" + generated + 
             "}";
     }
 }

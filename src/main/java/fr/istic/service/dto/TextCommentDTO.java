@@ -23,6 +23,8 @@ public class TextCommentDTO implements Serializable {
 
     public Long questionId;
 
+    public Boolean generated;
+
     @Override
     public boolean equals(Object o) {
         if (this == o) {
@@ -48,6 +50,7 @@ public class TextCommentDTO implements Serializable {
             ", description='" + description + "'" +
             ", zonegeneratedid='" + zonegeneratedid + "'" +
             ", questionId=" + questionId +
+            ", generated=" + generated + 
             "}";
     }
 }

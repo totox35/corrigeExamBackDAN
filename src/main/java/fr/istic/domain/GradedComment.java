@@ -46,6 +46,8 @@ public class GradedComment extends PanacheEntityBase implements Serializable {
     @JsonbTransient
     public Set<StudentResponse> studentResponses = new HashSet<>();
 
+    @Column(name = "generated")
+    public Boolean generated;
     // jhipster-needle-entity-add-field - JHipster will add fields here, do not remove
 
     @Override
@@ -72,6 +74,7 @@ public class GradedComment extends PanacheEntityBase implements Serializable {
             ", text='" + text + "'" +
             ", description='" + description + "'" +
             ", grade=" + gradequarter +
+            ", generated=" + generated +
             "}";
     }
 
@@ -95,6 +98,7 @@ public class GradedComment extends PanacheEntityBase implements Serializable {
             entity.gradequarter = gradedComment.gradequarter;
             entity.question = gradedComment.question;
             entity.studentResponses = gradedComment.studentResponses;
+            entity.generated = gradedComment.generated; 
         }
         return entity;
     }

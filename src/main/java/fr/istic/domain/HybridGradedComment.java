@@ -51,6 +51,8 @@ public class HybridGradedComment extends PanacheEntityBase implements Serializab
     @Cache(usage = CacheConcurrencyStrategy.READ_WRITE)
     public Set<Answer2HybridGradedComment> valueAnswers = new HashSet<>();
 
+    @Column(name = "generated")
+    public Boolean generated;
     // jhipster-needle-entity-add-field - JHipster will add fields here, do not remove
 
     @Override
@@ -73,21 +75,13 @@ public class HybridGradedComment extends PanacheEntityBase implements Serializab
     public String toString() {
         return (
             "HybridGradedComment{" +
-            "id=" +
-            id +
-            ", text='" +
-            text +
-            "'" +
-            ", description='" +
-            description +
-            "'" +
-            ", grade=" +
-            grade +
-            ", relative='" +
-            relative +
-            "'" +
-            ", step=" +
-            step +
+            "id=" + id +
+            ", text='" + text + "'" +
+            ", description='" + description + "'" +
+            ", grade=" + grade +
+            ", relative='" + relative + "'" +
+            ", step=" + step +
+            ", generated=" + generated +
             "}"
         );
     }
@@ -113,6 +107,7 @@ public class HybridGradedComment extends PanacheEntityBase implements Serializab
             entity.step = hybridGradedComment.step;
             entity.question = hybridGradedComment.question;
             entity.valueAnswers = hybridGradedComment.valueAnswers;
+            entity.generated = hybridGradedComment.generated; 
         }
         return entity;
     }

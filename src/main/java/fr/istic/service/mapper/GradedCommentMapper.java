@@ -19,6 +19,7 @@ public interface GradedCommentMapper extends EntityMapper<GradedCommentDTO, Grad
     @Mapping(source = "questionId", target = "question")
     @Mapping(target = "studentResponses", ignore = true)
     @Mapping(source = "grade", target = "gradequarter", qualifiedByName = "grade2gradequarter")
+    @Mapping(target = "generated")
     GradedComment toEntity(GradedCommentDTO gradedCommentDTO);
 
     default GradedComment fromId(Long id) {
