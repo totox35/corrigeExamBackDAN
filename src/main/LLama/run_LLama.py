@@ -239,7 +239,8 @@ QUESTION : "{req.question}"
 RÉPONSES DES ÉTUDIANTS : "{req.student_answers}"
 
 TÂCHE :
-- Génère exactement {req.nb_comments} commentaires courts et précis pour évaluer différentes réponses d'étudiants.
+- Génère exactement {req.nb_comments} commentaires courts et précis pour évaluer différentes réponses d'étudiants. 
+- Exactement {req.nb_comments} commentaires pas plus pas moins!
 - Chaque commentaire doit :
     • être concis (3 à 10 mots),
     • être réutilisable pour des réponses similaires,
@@ -306,6 +307,7 @@ RÉPONSES DES ÉTUDIANTS : "{req.student_answers}"
 
 TÂCHE :
 - Génère exactement {req.nb_comments} commentaires courts et précis pour évaluer différentes réponses d'étudiants.
+- Exactement {req.nb_comments} commentaires pas plus pas moins!
 - Chaque commentaire doit :
     • être concis (3 à 10 mots),
     • être adapté à des réponses similaires,
