@@ -437,4 +437,117 @@ public class PythonControllerES {
         }
     }
     
+    @GET
+@Path("/get-related-chunks-by-embedding")
+@Consumes(MediaType.APPLICATION_JSON)
+@Produces(MediaType.APPLICATION_JSON)
+public Response getRelatedChunksByEmbedding(@QueryParam("embedding") String embeddingJson,
+                                          @QueryParam("courseName") String courseName,
+                                          @QueryParam("topN") @DefaultValue("5") int topN) {
+    Map<String, Object> response = new HashMap<>();
+    StringBuilder output = new StringBuilder();
+    StringBuilder errorOutput = new StringBuilder();
+
+    try {
+        log.info("Starting the process to get related chunks using pre-calculated embedding...");
+
+        // Validate the embedding parameter
+        if (embeddingJson == null || embeddingJson.isEmpty()) {
+            log.error("Embedding vector missing in the request.");
+            return Response.status(Response.Status.BAD_REQUEST)
+                    .entity(Map.of("error", "Embedding vector is missing."))
+                    .build();
+        }
+
+        // Validate the course name parameter
+        if (courseName == null || courseName.isEmpty()) {
+            log.error("Course name missing in the request.");
+            return Response.status(Response.Status.BAD_REQUEST)
+                    .entity(Map.of("error", "Course name is missing."))
+                    .build();
+        }
+
+        // Path to Python script
+        String scriptPath = "src/main/resources/rag/get_related_chunks_by_embedding.py";
+
+        // Check if script file exists
+        File scriptFile = new File(scriptPath);
+        if (!scriptFile.exists()) {
+            log.error("Python script not found: " + scriptPath);
+            return Response.status(Response.Status.BAD_REQUEST)
+                    .entity(Map.of("error", "Python script not found: " + scriptPath))
+                    .build();
+        }
+
+        // Create a temporary file to store the embedding vector
+        String tempEmbeddingPath = "/tmp/embedding_" + System.currentTimeMillis() + ".json";
+        Files.write(Paths.get(tempEmbeddingPath), embeddingJson.getBytes());
+        log.info("Embedding saved at: " + tempEmbeddingPath);
+
+        // Run Python script with embedding file path, courseName and topN as arguments
+        ProcessBuilder pb = new ProcessBuilder(
+                "python3",
+                scriptFile.getAbsolutePath(),
+                tempEmbeddingPath,
+                courseName,
+                String.valueOf(topN)
+        );
+        pb.directory(scriptFile.getParentFile()); // Set working directory
+        Process process = pb.start();
+
+        // Read the Python script's standard output
+        BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()));
+        String line;
+        while ((line = reader.readLine()) != null) {
+            output.append(line).append("\n");
+            log.info("Python Output: " + line);
+        }
+
+        // Read any errors from the Python script
+        BufferedReader errorReader = new BufferedReader(new InputStreamReader(process.getErrorStream()));
+        String errorLine;
+        while ((errorLine = errorReader.readLine()) != null) {
+            errorOutput.append(errorLine).append("\n");
+            log.error("Python Error/Warning: " + errorLine);
+        }
+
+        // Wait for the process to finish
+        int exitCode = process.waitFor();
+        log.info("Process finished with exit code: " + exitCode);
+
+        // Clean up temporary file
+        try {
+            Files.delete(Paths.get(tempEmbeddingPath));
+            log.info("Temporary embedding file deleted");
+        } catch (Exception e) {
+            log.warn("Failed to delete temporary embedding file: " + e.getMessage());
+        }
+
+        // Build the response JSON
+        response.put("exitCode", exitCode);
+        response.put("output", output.toString());
+
+        if (exitCode == 0) {
+            response.put("status", "success");
+            response.put("message", "Related chunks retrieved successfully.");
+            if (errorOutput.length() > 0) {
+                response.put("warnings", errorOutput.toString());
+            }
+            return Response.ok(response).build();
+        } else {
+            response.put("status", "failure");
+            response.put("error", errorOutput.toString());
+            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+                    .entity(response)
+                    .build();
+        }
+
+    } catch (Exception e) {
+        log.error("Error while retrieving related chunks by embedding.", e);
+        response.put("error", "Error while retrieving related chunks: " + e.getMessage());
+        return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+                .entity(response)
+                .build();
+    }
+}
 }

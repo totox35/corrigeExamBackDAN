@@ -23,7 +23,7 @@ def create_index(index_name: str):
                         "text": {"type": "text"},
                         "embedding": {
                             "type": "dense_vector",
-                            "dims": 1024
+                            "dims": 384 # Changed dimensions to use for chunks
                         },
                         "pdf_name": {"type": "keyword"}  # PDF identification
                     }

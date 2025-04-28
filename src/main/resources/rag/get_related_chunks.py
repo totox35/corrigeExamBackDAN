@@ -6,8 +6,8 @@ from elasticsearch import Elasticsearch
 import numpy as np
 from sentence_transformers import SentenceTransformer
 
-# Initialize Elasticsearch client
-es = Elasticsearch([{'host': 'localhost', 'port': 9200}])
+# Initialize Elasticsearch client with scheme parameter
+es = Elasticsearch(['http://localhost:9200'])
 
 # Load the embedding model
 model = SentenceTransformer('all-MiniLM-L6-v2')
@@ -40,22 +40,38 @@ def get_relevant_chunks(text, index_name, top_n=5):
     # Get the embedding of the input text
     input_embedding = get_embeddings([text])[0]
 
-    # Query Elasticsearch for documents with vectors
-    response = es.search(index=index_name, body={
-        "query": {
-            "knn": {
-                "embedding": {
-                    "vector": input_embedding.tolist(),  # Convert numpy array to list
-                    "k": top_n
-                }
+    if len(input_embedding) != 1024:
+        raise ValueError(f"Embedding dimension mismatch: got {len(input_embedding)} but expected 1024")
+
+    
+    # Convert embedding to a list and format for ES script
+    query_vector = input_embedding.tolist()
+    
+    # Use a script score query which calculates cosine similarity
+    script_query = {
+        "script_score": {
+            "query": {"match_all": {}},
+            "script": {
+                "source": "cosineSimilarity(params.query_vector, 'embedding') + 1.0",
+                "params": {"query_vector": query_vector}
             }
         }
-    })
+    }
+    
+    # Execute search
+    response = es.search(
+        index=index_name,
+        query=script_query,
+        size=top_n
+    )
 
     # Extract relevant chunks based on cosine similarity score
     relevant_chunks = []
     for doc in response['hits']['hits']:
-        relevant_chunks.append(doc["_source"])
+        chunk = doc["_source"]
+        # Add the score for reference
+        chunk['score'] = doc['_score']
+        relevant_chunks.append(chunk)
 
     return relevant_chunks
 
