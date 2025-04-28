@@ -249,16 +249,14 @@ TÂCHE :
 
 FORMAT EXACT REQUIS (respecte strictement ce format) :
 
+{'UNIQUEMENT:' if req.nb_comments == 1 else ''}
 Titre du commentaire 1 : [Titre bref et descriptif]  
-Commentaire 1 : [Commentaire court et précis]
+Commentaire 1 : [Commentaire court et précis]  
 
-Titre du commentaire 2 : [Titre bref et descriptif]  
-Commentaire 2 : [Commentaire court et précis]
+{'' if req.nb_comments == 1 else '''[...]
 
-[...]
-
-Titre du commentaire {req.nb_comments} : [Titre bref et descriptif]  
-Commentaire {req.nb_comments} : [Commentaire court et précis]
+Titre du commentaire '''+str(req.nb_comments)+''' : [Titre bref et descriptif]  
+Commentaire '''+str(req.nb_comments)+''' : [Commentaire court et précis]'''}
 """
 
     # Requête vers l'API Ragarenn
@@ -320,19 +318,16 @@ N'utilise pas 0 comme note. Chaque commentaire doit avoir un impact sur la note 
 
 FORMAT EXACT REQUIS (respecte strictement ce format) :
 
+{'UNIQUEMENT:' if req.nb_comments == 1 else ''}
 Titre du commentaire 1 : [Titre bref et descriptif]  
 Commentaire 1 : [Commentaire court et précis]  
 Note du commentaire 1 :
 
-Titre du commentaire 2 : [Titre bref et descriptif]  
-Commentaire 2 : [Commentaire court et précis]  
-Note du commentaire 2 :
+{'' if req.nb_comments == 1 else '''[...]
 
-[...]
-
-Titre du commentaire {req.nb_comments} : [Titre bref et descriptif]  
-Commentaire {req.nb_comments} : [Commentaire court et précis]  
-Note du commentaire {req.nb_comments} :
+Titre du commentaire '''+str(req.nb_comments)+''' : [Titre bref et descriptif]  
+Commentaire '''+str(req.nb_comments)+''' : [Commentaire court et précis]  
+Note du commentaire '''+str(req.nb_comments)+''' :'''}
 """
 
     # Requête vers l'API Ragarenn
