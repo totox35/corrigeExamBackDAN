@@ -34,7 +34,7 @@ public class PythonControllerEmbedding {
 
         try {
             // Start the Python process
-            ProcessBuilder pb = new ProcessBuilder("python3", "src/main/resources/embedding/embedding.py");
+            ProcessBuilder pb = new ProcessBuilder("python3", "src/main/embedding/embedding.py");
             pb.redirectErrorStream(true);
             pythonProcess = pb.start();
 
@@ -88,6 +88,7 @@ public class PythonControllerEmbedding {
             String textsJson = new JSONArray(texts).toString();
 
             // Send data to running process
+            System.out.println(textsJson);
             processWriter.write(textsJson);
             processWriter.newLine();
             processWriter.flush();
@@ -97,6 +98,9 @@ public class PythonControllerEmbedding {
             String line;
             int linesRead = 0;
             while (linesRead < texts.size() && (line = processReader.readLine()) != null) {
+                if (!line.startsWith("[") && !line.endsWith("]")) {
+                    continue;
+                }
                 output.append(line).append("\n");
                 log.info("Python Output: " + line);
                 linesRead++;

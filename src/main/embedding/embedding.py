@@ -1,11 +1,17 @@
+from transformers import AutoModel
+
 import onnxruntime as ort
 import numpy as np
 import json
 import threading
+import warnings
+
+warnings.simplefilter(action='ignore', category=FutureWarning)
 
 class EmbeddingController:
     def __init__(self, model_path: str):
         # Initialize the ONNX runtime session
+        self.model = AutoModel.from_pretrained("jinaai/jina-embeddings-v3", trust_remote_code=True)
         self.ort_session = ort.InferenceSession(model_path)
         # Cache to store embeddings
         self.cache = {}
@@ -70,13 +76,21 @@ class EmbeddingController:
         return embeddings
 
 def main():
-    model_path = "model.onnx"
-    controller = EmbeddingController(model_path)
+    #os.environ["TOKENIZERS_PARALLELISM"] = "false"
+    #model_path = "src/main/embedding/model.onnx"
+    #controller = EmbeddingController(model_path)
 
-    # Wait for the signal that all data is ready
-    controller.wait_for_data()
+    model = AutoModel.from_pretrained("jinaai/jina-embeddings-v3", trust_remote_code=True, device_map="cpu")
 
-    embeddings = controller.get_embedding_from_txt_list(controller.texts)
+    texts = input()
+    texts = json.loads(texts)
+
+    embeddings = []
+    for text in texts:
+        embedding = model.encode([text], task="text-matching")
+        embedding = embedding.flatten()
+        embedding = embedding.tolist()
+        embeddings.append(embedding)
     print(json.dumps(embeddings))
 
 if __name__ == "__main__":

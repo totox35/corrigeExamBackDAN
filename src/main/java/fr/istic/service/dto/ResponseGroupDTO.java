@@ -10,13 +10,9 @@ import java.io.Serializable;
 public class ResponseGroupDTO implements Serializable {
 
     public Long id;
-
     public Long questionId;
-
     public Long[] predictionIds;
-
     public Double[] averageEmbedding;
-
 
     @Override
     public boolean equals(Object o) {
@@ -33,7 +29,7 @@ public class ResponseGroupDTO implements Serializable {
 
     @Override
     public String toString() {
-        return "ResponseGroupeDTO{" +
+        return "ResponseGroupDTO{" +
             "id=" + id +
             ", questionId='" + questionId + "'" +
             ", predictionIds='" + predictionIds + "'" +
