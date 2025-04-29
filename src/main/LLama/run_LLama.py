@@ -78,7 +78,7 @@ class GradeRequest(BaseModel):
     max_grade: int
     step: float
     existing_comments: Optional[List[TextComment]] = Field(default_factory=list)
-    relevant_chunks: Optional[str]
+    relevant_chunks: List[str]
 
 class GradeRequestGradedComment(BaseModel):
     """
@@ -100,7 +100,7 @@ class GradeRequestGradedComment(BaseModel):
     step: float
     existing_comments: Optional[List[GradedComment]] = Field(default_factory=list)
     grade_type: str
-    relevant_chunks: Optional[str]
+    relevant_chunks: List[str]
 
 class TCommentRequest(BaseModel):
     """
@@ -116,7 +116,7 @@ class TCommentRequest(BaseModel):
     # notes: str
     student_answers: List[str]
     nb_comments: int
-    relevant_chunks: Optional[str]
+    relevant_chunks: List[str]
 
 
 class GCommentRequest(BaseModel):
@@ -139,7 +139,7 @@ class GCommentRequest(BaseModel):
     grade_type: str
     step: float
     max_grade:int
-    relevant_chunks: Optional[str]
+    relevant_chunks: List[str]
 
 @app.post("/api/grade_with_text_comments")
 def grade(req: GradeRequest):
@@ -170,6 +170,8 @@ def grade(req: GradeRequest):
             context += f"Chunk {i+1}: {chunk}\n"
     else:
         context = "Aucun contexte fourni."
+
+    print(context)
 
     prompt = f"""
     Tu es une assistante pédagogique spécialisée dans la notation d'examens.

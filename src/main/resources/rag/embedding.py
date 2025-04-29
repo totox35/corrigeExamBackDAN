@@ -14,7 +14,7 @@ def get_embeddings(text_chunks: list) -> list:
     list: A list of embeddings, one for each text chunk.
     """
     # Initialize the model
-    model = AutoModel.from_pretrained("jinaai/jina-embeddings-v3", trust_remote_code=True)
+    model = AutoModel.from_pretrained("jinaai/jina-embeddings-v3", trust_remote_code=True, device_map="cpu", truncate_dim = 1024)
     embeddings = [model.encode(chunk) for chunk in text_chunks]
     return embeddings
 
