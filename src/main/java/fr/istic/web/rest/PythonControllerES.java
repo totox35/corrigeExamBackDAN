@@ -13,15 +13,23 @@ import jakarta.ws.rs.core.Response;
 
 import java.io.BufferedReader;
 import java.io.File;
+import java.io.FileWriter;
 import java.io.InputStreamReader;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.util.Arrays;
 import java.util.Base64;
 import java.util.HashMap;
 import java.util.Map;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import com.google.gson.Gson;
+import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
 
 /**
  * REST controller to process PDF uploads and execute a Python script
@@ -437,117 +445,159 @@ public class PythonControllerES {
         }
     }
     
-    @GET
-@Path("/get-related-chunks-by-embedding")
-@Consumes(MediaType.APPLICATION_JSON)
-@Produces(MediaType.APPLICATION_JSON)
-public Response getRelatedChunksByEmbedding(@QueryParam("embedding") String embeddingJson,
-                                          @QueryParam("courseName") String courseName,
-                                          @QueryParam("topN") @DefaultValue("5") int topN) {
-    Map<String, Object> response = new HashMap<>();
-    StringBuilder output = new StringBuilder();
-    StringBuilder errorOutput = new StringBuilder();
+    @POST
+    @Path("/get-related-chunks-by-embedding")
+    @Consumes(MediaType.APPLICATION_JSON)
+    @Produces(MediaType.APPLICATION_JSON)
+    public Response getRelatedChunks(PostRequestData requestData) {
+        JsonObject response = new JsonObject();
+        StringBuilder output = new StringBuilder();
+        StringBuilder errorOutput = new StringBuilder();
 
-    try {
-        log.info("Starting the process to get related chunks using pre-calculated embedding...");
-
-        // Validate the embedding parameter
-        if (embeddingJson == null || embeddingJson.isEmpty()) {
-            log.error("Embedding vector missing in the request.");
-            return Response.status(Response.Status.BAD_REQUEST)
-                    .entity(Map.of("error", "Embedding vector is missing."))
-                    .build();
-        }
-
-        // Validate the course name parameter
-        if (courseName == null || courseName.isEmpty()) {
-            log.error("Course name missing in the request.");
-            return Response.status(Response.Status.BAD_REQUEST)
-                    .entity(Map.of("error", "Course name is missing."))
-                    .build();
-        }
-
-        // Path to Python script
-        String scriptPath = "src/main/resources/rag/get_related_chunks_by_embedding.py";
-
-        // Check if script file exists
-        File scriptFile = new File(scriptPath);
-        if (!scriptFile.exists()) {
-            log.error("Python script not found: " + scriptPath);
-            return Response.status(Response.Status.BAD_REQUEST)
-                    .entity(Map.of("error", "Python script not found: " + scriptPath))
-                    .build();
-        }
-
-        // Create a temporary file to store the embedding vector
-        String tempEmbeddingPath = "/tmp/embedding_" + System.currentTimeMillis() + ".json";
-        Files.write(Paths.get(tempEmbeddingPath), embeddingJson.getBytes());
-        log.info("Embedding saved at: " + tempEmbeddingPath);
-
-        // Run Python script with embedding file path, courseName and topN as arguments
-        ProcessBuilder pb = new ProcessBuilder(
-                "python3",
-                scriptFile.getAbsolutePath(),
-                tempEmbeddingPath,
-                courseName,
-                String.valueOf(topN)
-        );
-        pb.directory(scriptFile.getParentFile()); // Set working directory
-        Process process = pb.start();
-
-        // Read the Python script's standard output
-        BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()));
-        String line;
-        while ((line = reader.readLine()) != null) {
-            output.append(line).append("\n");
-            log.info("Python Output: " + line);
-        }
-
-        // Read any errors from the Python script
-        BufferedReader errorReader = new BufferedReader(new InputStreamReader(process.getErrorStream()));
-        String errorLine;
-        while ((errorLine = errorReader.readLine()) != null) {
-            errorOutput.append(errorLine).append("\n");
-            log.error("Python Error/Warning: " + errorLine);
-        }
-
-        // Wait for the process to finish
-        int exitCode = process.waitFor();
-        log.info("Process finished with exit code: " + exitCode);
-
-        // Clean up temporary file
         try {
-            Files.delete(Paths.get(tempEmbeddingPath));
-            log.info("Temporary embedding file deleted");
-        } catch (Exception e) {
-            log.warn("Failed to delete temporary embedding file: " + e.getMessage());
-        }
+            log.info("Starting the process to get related chunks using POST...");
+            log.info("Request Data: " + requestData.toString());
+            // Log the query to ensure it's correctly received
+            log.info("Received Query: " + Arrays.toString(requestData.getQuery()));
 
-        // Build the response JSON
-        response.put("exitCode", exitCode);
-        response.put("output", output.toString());
-
-        if (exitCode == 0) {
-            response.put("status", "success");
-            response.put("message", "Related chunks retrieved successfully.");
-            if (errorOutput.length() > 0) {
-                response.put("warnings", errorOutput.toString());
+            // Validate request data
+            if (requestData.getQuery() == null || requestData.getQuery().length == 0) {
+                log.error("Query array missing in the request.");
+                return Response.status(Response.Status.BAD_REQUEST)
+                        .entity(Map.of("error", "Query array is missing."))
+                        .build();
             }
-            return Response.ok(response).build();
-        } else {
-            response.put("status", "failure");
-            response.put("error", errorOutput.toString());
+
+            if (requestData.getCourseName() == null || requestData.getCourseName().isEmpty()) {
+                log.error("Course name missing in the request.");
+                return Response.status(Response.Status.BAD_REQUEST)
+                        .entity(Map.of("error", "Course name is missing."))
+                        .build();
+            }
+
+            String scriptPath = "src/main/resources/rag/get_related_chunks_by_embedding.py";
+
+            // Check if file exists
+            File scriptFile = new File(scriptPath);
+            if (!scriptFile.exists()) {
+                log.error("Python script not found: " + scriptPath);
+                return Response.status(Response.Status.BAD_REQUEST)
+                        .entity(Map.of("error", "Python script not found: " + scriptPath))
+                        .build();
+            }
+
+            // Write embedding to a temporary file
+            File embeddingFile = File.createTempFile("embedding", ".json");
+            try (FileWriter writer = new FileWriter(embeddingFile)) {
+                // Convert Double[] to JSON array string
+                String queryJson = new Gson().toJson(requestData.getQuery());
+                writer.write(queryJson);
+            }
+
+            // Run script with query
+            ProcessBuilder pb = new ProcessBuilder(
+                    "python3",
+                    scriptFile.getAbsolutePath(),
+                    embeddingFile.getAbsolutePath(),
+                    requestData.getCourseName(),
+                    String.valueOf(requestData.getTopN())
+            );
+            pb.directory(scriptFile.getParentFile());
+            Process process = pb.start();
+
+            // Read standard output
+            BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()));
+            String line;
+            while ((line = reader.readLine()) != null) {
+                output.append(line.replace(System.lineSeparator(), ""));
+                log.info("Python Output: " + line);
+            }
+
+            // Read errors from script
+            BufferedReader errorReader = new BufferedReader(new InputStreamReader(process.getErrorStream()));
+            String errorLine;
+            while ((errorLine = errorReader.readLine()) != null) {
+                errorOutput.append(errorLine).append("\n");
+                log.error("Python Error/Warning: " + errorLine);
+            }
+
+            int exitCode = process.waitFor();
+            log.info("Process finished with exit code: " + exitCode);
+
+            final FileWriter w = new FileWriter("/tmp/test");
+            w.write(output.toString());
+            w.close();
+
+            final JsonElement outputArray = JsonParser.parseString(output.toString());
+            // Build response JSON
+            response.addProperty("exitCode", exitCode);
+            response.add("output", outputArray);
+
+            if (exitCode == 0) {
+                response.addProperty("status", "success");
+                response.addProperty("message", "Related chunks retrieved successfully.");
+                if (errorOutput.length() > 0) {
+                    response.addProperty("warnings", errorOutput.toString());
+                }
+                return Response.ok(response.toString()).build();
+            } else {
+                response.addProperty("status", "failure");
+                response.addProperty("error", errorOutput.toString());
+                return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+                        .entity(response.toString())
+                        .build();
+            }
+
+        } catch (Exception e) {
+            log.error("Error while retrieving related chunks.", e);
+            response.addProperty("error", "Error while retrieving related chunks: " + e.getMessage());
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity(response)
+                    .entity(response.toString())
                     .build();
         }
-
-    } catch (Exception e) {
-        log.error("Error while retrieving related chunks by embedding.", e);
-        response.put("error", "Error while retrieving related chunks: " + e.getMessage());
-        return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                .entity(response)
-                .build();
     }
-}
+
+
+
+// RequestData class for POST payload
+    public static class PostRequestData {
+        private Double[] query;
+        private String courseName;
+        private int topN = 5; // Default value
+
+        // Getters and setters for the fields
+        public Double[] getQuery() {
+            return query;
+        }
+
+        public void setQuery(Double[] query) {
+            this.query = query;
+        }
+
+        public String getCourseName() {
+            return courseName;
+        }
+
+        public void setCourseName(String courseName) {
+            this.courseName = courseName;
+        }
+
+        public int getTopN() {
+            return topN;
+        }
+
+        public void setTopN(int topN) {
+            this.topN = topN;
+        }
+
+        @Override
+        public String toString() {
+            return "PostRequestData{" +
+                    "query='" + query + '\'' +
+                    ", courseName='" + courseName + '\'' +
+                    ", topN=" + topN +
+                    '}';
+        }
+    }
+
 }

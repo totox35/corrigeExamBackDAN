@@ -18,7 +18,7 @@ def get_relevant_chunks_by_embedding(embedding, index_name, top_n=5):
     top_n (int): The number of top relevant chunks to retrieve
 
     Returns:
-    list: The most relevant chunks from Elasticsearch
+    list: The most relevant chunks from Elasticsearch, only including 'text' field
     """
     # Use a script score query which calculates cosine similarity
     script_query = {
@@ -38,13 +38,12 @@ def get_relevant_chunks_by_embedding(embedding, index_name, top_n=5):
         size=top_n
     )
 
-    # Extract relevant chunks based on cosine similarity score
     relevant_chunks = []
     for doc in response['hits']['hits']:
         chunk = doc["_source"]
-        # Add the score for reference
-        chunk['score'] = doc['_score']
-        relevant_chunks.append(chunk)
+        relevant_chunks.append({
+            "text": chunk['text'] 
+        })
 
     return relevant_chunks
 
@@ -67,6 +66,7 @@ def main():
         with open(embedding_file_path, 'r') as f:
             embedding = json.load(f)
         
+        #print(embedding)
         if len(embedding) != 1024:
             raise ValueError(f"Embedding dimension mismatch: got {len(embedding)} but expected 1024")
 

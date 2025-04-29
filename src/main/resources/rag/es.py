@@ -1,4 +1,5 @@
 from elasticsearch import Elasticsearch, helpers
+from elasticsearch.helpers import BulkIndexError
 import uuid
 from embedding import get_embeddings
 from chunking import chunk_text_from_pdf, read_pdf_file_as_binary
@@ -6,31 +7,35 @@ from chunking import chunk_text_from_pdf, read_pdf_file_as_binary
 # Connect to local Elasticsearch
 es = Elasticsearch("http://localhost:9200")
 
-def create_index(index_name: str):
+def create_index(index_name: str, dims: int):
     """
     Creates an index in the Elasticsearch client if it does not exist.
 
     Parameters:
     index_name (str): The index to be created.
+    dims (int): The number of dimensions for the dense_vector field.
     """
-    if not es.indices.exists(index=index_name):
-        es.indices.create(
-            index=index_name,
-            body={
-                "mappings": {
-                    "properties": {
-                        "id": {"type": "keyword"},
-                        "text": {"type": "text"},
-                        "embedding": {
-                            "type": "dense_vector",
-                            "dims": 384 # Changed dimensions to use for chunks
-                        },
-                        "pdf_name": {"type": "keyword"}  # PDF identification
-                    }
+    if es.indices.exists(index=index_name):
+        es.indices.delete(index=index_name)
+        print(f"Deleted existing index {index_name}.")
+
+    es.indices.create(
+        index=index_name,
+        body={
+            "mappings": {
+                "properties": {
+                    "id": {"type": "keyword"},
+                    "text": {"type": "text"},
+                    "embedding": {
+                        "type": "dense_vector",
+                        "dims": dims  # Use the provided number of dimensions
+                    },
+                    "pdf_name": {"type": "keyword"}  # PDF identification
                 }
             }
-        )
-        print(f"Index {index_name} created successfully.")
+        }
+    )
+    print(f"Index {index_name} created successfully with {dims} dimensions.")
 
 def add_data(texts: list, course_name: str, pdf_name: str):
     """
@@ -42,9 +47,14 @@ def add_data(texts: list, course_name: str, pdf_name: str):
     pdf_name (str): The name of the PDF from which the chunks originate.
     """
     index_name = "course_" + course_name
-    create_index(index_name=index_name)
-
     embeddings = get_embeddings(texts)
+
+    # Check the dimension of the embeddings
+    embedding_dim = embeddings[0].shape[0] if embeddings else 0
+    print(f"Embedding dimension: {embedding_dim}")
+
+    # Create index with the correct number of dimensions
+    create_index(index_name=index_name, dims=embedding_dim)
 
     documents = []
     for i, text in enumerate(texts):
@@ -57,8 +67,13 @@ def add_data(texts: list, course_name: str, pdf_name: str):
         documents.append(document)
 
     # Bulk index the documents
-    helpers.bulk(es, documents, index=index_name)
-    print(f"Data from '{pdf_name}' added successfully to course '{course_name}'.")
+    try:
+        helpers.bulk(es, documents, index=index_name)
+        print(f"Data from '{pdf_name}' added successfully to course '{course_name}'.")
+    except BulkIndexError as e:
+        for error in e.errors:
+            print(f"Error indexing document: {error}")
+        raise
 
 def add_data_from_pdf(pdf_binary: bytes, course_name: str, pdf_name: str):
     """
@@ -165,7 +180,7 @@ def remove_chunks_by_pdf(course_name: str, pdf_name: str):
     deleted = response.get('deleted', 0)
     print(f"Deleted {deleted} chunks associated with '{pdf_name}' from course '{course_name}'.")
 
-def get_all_pdf_names(course_name:str):
+def get_all_pdf_names(course_name: str):
     """
     Retrieves all unique PDF names stored in Elasticsearch for a specified course.
 
@@ -196,7 +211,7 @@ def get_all_pdf_names(course_name:str):
         }
     }
     response = es.search(index=index_name, body=query)
-    
+
     # Extract unique pdf_names from the response
     for bucket in response['aggregations']['unique_pdf_names']['buckets']:
         pdf_names.add(bucket['key'])

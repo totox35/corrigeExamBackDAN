@@ -3,8 +3,10 @@ import json
 import threading
 import warnings
 import sys
+import onnxruntime as ort
 
 warnings.simplefilter(action='ignore', category=FutureWarning)
+
 
 class EmbeddingController:
     def __init__(self, model_path: str):
