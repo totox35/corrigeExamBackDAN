@@ -1,17 +1,15 @@
 from transformers import AutoModel
-
-import onnxruntime as ort
-import numpy as np
 import json
 import threading
 import warnings
+import sys
 
 warnings.simplefilter(action='ignore', category=FutureWarning)
 
 class EmbeddingController:
     def __init__(self, model_path: str):
         # Initialize the ONNX runtime session
-        self.model = AutoModel.from_pretrained("jinaai/jina-embeddings-v3", trust_remote_code=True)
+        self.model = AutoModel.from_pretrained("jinaai/jina-embeddings-v3", trust_remote_code=True, device_map='cpu')
         self.ort_session = ort.InferenceSession(model_path)
         # Cache to store embeddings
         self.cache = {}
@@ -76,22 +74,38 @@ class EmbeddingController:
         return embeddings
 
 def main():
-    #os.environ["TOKENIZERS_PARALLELISM"] = "false"
-    #model_path = "src/main/embedding/model.onnx"
-    #controller = EmbeddingController(model_path)
+    try:
+        # Load the model
+        model = AutoModel.from_pretrained("jinaai/jina-embeddings-v3", trust_remote_code=True, device_map="cpu", truncate_dim = 1024)
 
-    model = AutoModel.from_pretrained("jinaai/jina-embeddings-v3", trust_remote_code=True, device_map="cpu")
+        # Read input from stdin
+        texts_input = sys.stdin.readline().strip()
+        
+        # Log received input for debugging (will be captured by Java process)
+        print(f"DEBUG: Received input: {texts_input}", file=sys.stderr)
+        
+        # Parse the JSON input
+        texts = json.loads(texts_input)
 
-    texts = input()
-    texts = json.loads(texts)
+        # Process embeddings
+        embeddings = []
+        for text in texts:
+            embedding = model.encode([text], task="text-matching")
+            embedding = embedding.flatten()
+            embedding = embedding.tolist()
+            embeddings.append(embedding)
+        
+        # Format and print the result as valid JSON
+        result_json = json.dumps(embeddings)
+        print(result_json, flush=True)
+        
+    except Exception as e:
+        # Log any errors for debugging
+        print(f"ERROR in embedding.py: {str(e)}", file=sys.stderr)
+        # Still try to return a valid JSON format with error info
+        error_response = json.dumps({"error": str(e)})
+        print(error_response, flush=True)
 
-    embeddings = []
-    for text in texts:
-        embedding = model.encode([text], task="text-matching")
-        embedding = embedding.flatten()
-        embedding = embedding.tolist()
-        embeddings.append(embedding)
-    print(json.dumps(embeddings))
 
 if __name__ == "__main__":
     main()

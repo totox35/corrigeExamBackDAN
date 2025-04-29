@@ -15,6 +15,8 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 import org.json.JSONArray;
+import org.json.JSONException;
+import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -88,7 +90,7 @@ public class PythonControllerEmbedding {
             String textsJson = new JSONArray(texts).toString();
 
             // Send data to running process
-            System.out.println(textsJson);
+            log.info("Sending texts to Python process: {}", textsJson);
             processWriter.write(textsJson);
             processWriter.newLine();
             processWriter.flush();
@@ -97,13 +99,46 @@ public class PythonControllerEmbedding {
             StringBuilder output = new StringBuilder();
             String line;
             int linesRead = 0;
-            while (linesRead < texts.size() && (line = processReader.readLine()) != null) {
-                if (!line.startsWith("[") && !line.endsWith("]")) {
+            
+            // Collect output until we find a valid JSON array
+            while ((line = processReader.readLine()) != null) {
+                linesRead++;
+                
+                // Log each line for debugging
+                log.debug("Python output line {}: {}", linesRead, line);
+                
+                // Skip debug or error messages that start with "DEBUG:" or "ERROR:"
+                if (line.startsWith("DEBUG:") || line.startsWith("ERROR:")) {
+                    log.info("Python debug/error output: {}", line);
                     continue;
                 }
-                output.append(line).append("\n");
-                log.info("Python Output: " + line);
-                linesRead++;
+                
+                // Try to parse as JSON to see if it's valid
+                try {
+                    // Check if it's a JSONArray or JSONObject
+                    if ((line.trim().startsWith("[") && line.trim().endsWith("]")) || 
+                        (line.trim().startsWith("{") && line.trim().endsWith("}"))) {
+                        output.append(line);
+                        break; // Found valid JSON, stop reading
+                    }
+                } catch (Exception e) {
+                    // Not valid JSON, continue collecting output
+                    log.debug("Line is not valid JSON, continuing to next line");
+                }
+                
+                // If we've read too many lines without finding valid JSON, break to avoid hanging
+                if (linesRead > 50) {
+                    log.warn("Read 50 lines without finding valid JSON output, stopping");
+                    break;
+                }
+            }
+
+            if (output.length() == 0) {
+                log.error("No valid JSON output received from Python process");
+                response.put("error", "No valid JSON output received from Python process");
+                return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+                        .entity(response)
+                        .build();
             }
 
             // Extract embeddings
@@ -125,14 +160,58 @@ public class PythonControllerEmbedding {
     }
 
     private List<Map<String, Object>> parseEmbeddingsFromOutput(String output) {
-        // Parse JSON output from the Python script
-        JSONArray embeddingsArray = new JSONArray(output);
-        return embeddingsArray.toList().stream()
-                .map(embedding -> {
-                    Map<String, Object> embeddingMap = new HashMap<>();
-                    embeddingMap.put("embedding", embedding);
-                    return embeddingMap;
-                })
-                .collect(Collectors.toList());
+        log.debug("Parsing output: {}", output);
+        List<Map<String, Object>> result = new ArrayList<>();
+        
+        try {
+            // First, check if output is a JSON object with an error message
+            if (output.startsWith("{")) {
+                JSONObject jsonObj = new JSONObject(output);
+                if (jsonObj.has("error")) {
+                    log.error("Python script returned error: {}", jsonObj.getString("error"));
+                    throw new RuntimeException("Python script error: " + jsonObj.getString("error"));
+                }
+            }
+            
+            // Parse as JSON array
+            JSONArray embeddingsArray = new JSONArray(output);
+            
+            // Process each embedding
+            for (int i = 0; i < embeddingsArray.length(); i++) {
+                Object embedding = embeddingsArray.get(i);
+                Map<String, Object> embeddingMap = new HashMap<>();
+                
+                // Make sure embedding is properly handled as a List/Array
+                if (embedding instanceof JSONArray) {
+                    // Convert JSONArray to List
+                    embeddingMap.put("embedding", ((JSONArray) embedding).toList());
+                } else if (embedding instanceof String) {
+                    // If it's a string, try parsing it as a JSON array
+                    try {
+                        JSONArray embeddingArray = new JSONArray(embedding.toString());
+                        embeddingMap.put("embedding", embeddingArray.toList());
+                    } catch (JSONException e) {
+                        // If parsing fails, wrap it in an array with a single element
+                        log.warn("Could not parse embedding as JSON array, using as raw string");
+                        List<String> singleEmbedding = new ArrayList<>();
+                        singleEmbedding.add(embedding.toString());
+                        embeddingMap.put("embedding", singleEmbedding);
+                    }
+                } else {
+                    // For any other type, convert to string and wrap in a list
+                    log.warn("Unexpected embedding type: {}", embedding.getClass().getName());
+                    List<String> singleEmbedding = new ArrayList<>();
+                    singleEmbedding.add(embedding.toString());
+                    embeddingMap.put("embedding", singleEmbedding);
+                }
+                
+                result.add(embeddingMap);
+            }
+        } catch (JSONException e) {
+            log.error("Failed to parse JSON from Python output: {}", e.getMessage());
+            throw new RuntimeException("Failed to parse JSON from Python output: " + e.getMessage(), e);
+        }
+        
+        return result;
     }
 }
