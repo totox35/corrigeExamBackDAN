@@ -51,7 +51,7 @@ def add_data(texts: list, course_name: str, pdf_name: str):
 
     # Check the dimension of the embeddings
     embedding_dim = embeddings[0].shape[0] if embeddings else 0
-    print(f"Embedding dimension: {embedding_dim}")
+    # print(f"Embedding dimension: {embedding_dim}")
 
     # Create index with the correct number of dimensions
     create_index(index_name=index_name, dims=embedding_dim)
@@ -178,7 +178,7 @@ def remove_chunks_by_pdf(course_name: str, pdf_name: str):
 
     response = es.delete_by_query(index=index_name, body=query)
     deleted = response.get('deleted', 0)
-    print(f"Deleted {deleted} chunks associated with '{pdf_name}' from course '{course_name}'.")
+    # print(f"Deleted {deleted} chunks associated with '{pdf_name}' from course '{course_name}'.")
 
 def get_all_pdf_names(course_name: str):
     """

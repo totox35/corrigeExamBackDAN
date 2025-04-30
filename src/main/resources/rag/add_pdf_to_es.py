@@ -14,5 +14,5 @@ pdf_name = sys.argv[3]
 # Call the existing function with provided arguments
 add_data_from_pdf_path(pdf_path=pdf_file_path, course_name=course_name,pdf_name=pdf_name)
 
-print(f"PDF data added to Elasticsearch successfully from {pdf_file_path}")
-print(f"Pdf: {pdf_name} Course: {course_name}")
+# print(f"PDF data added to Elasticsearch successfully from {pdf_file_path}")
+# print(f"Pdf: {pdf_name} Course: {course_name}")

@@ -355,10 +355,9 @@ public class PythonControllerES {
         StringBuilder errorOutput = new StringBuilder();
 
         try {
-            log.info("Starting the process to get related chunks using POST...");
-            log.info("Request Data: " + requestData.toString());
-            // Log the query to ensure it's correctly received
-            log.info("Received Query: " + Arrays.toString(requestData.getQuery()));
+            //log.info("Starting the process to get related chunks using POST...");
+            //log.info("Request Data: " + requestData.toString());
+            //log.info("Received Query: " + Arrays.toString(requestData.getQuery()));
 
             // Validate request data
             if (requestData.getQuery() == null || requestData.getQuery().length == 0) {
@@ -422,7 +421,7 @@ public class PythonControllerES {
             }
 
             int exitCode = process.waitFor();
-            log.info("Process finished with exit code: " + exitCode);
+            //log.info("Process finished with exit code: " + exitCode);
 
             final FileWriter w = new FileWriter("/tmp/test");
             w.write(output.toString());

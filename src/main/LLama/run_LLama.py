@@ -272,7 +272,9 @@ def grade_graded_comment(req: GradeRequestGradedComment):
     RÉPONSES DES ÉTUDIANTS : "{req.student_answer}"  
 
     Ta tâche :  
-    - Génère des commentaires expliquant l'évaluation de ces réponses à partir du contexte fourni et de tes propres connaissances.  
+    - Génère un ou plusieurs commentaires expliquant l'évaluation de ces réponses à partir du contexte fourni et de tes propres connaissances.
+    - Limite le nombre de commentaires au maximum, afin de garder un commentaire seulement s'il est pertinent.
+    - Si les commentaires existants sont suffisants, ne propose pas d'autres commentaires à part les commentaires existants.  
     - Chaque commentaire doit être :
         • concis (3 à 5 mots),  
         • applicable à d'autres réponses similaires,  
@@ -283,17 +285,15 @@ def grade_graded_comment(req: GradeRequestGradedComment):
     - Sinon, crée de nouveaux commentaires.  
     - La note globale sera calculée automatiquement à partir des notes des commentaires, donc **ne donne pas de note finale globale**.
 
-    ⚠️ Chaque note de commentaire doit être un multiple de {req.step} (exemples : 0, {req.step}, {req.step * 2}, etc.).N'utilise pas 0 comme note. Chaque commentaire doit avoir un impact sur la note finale.
+    ⚠️ Chaque note de commentaire doit être un multiple de {req.step} (exemples : 0, {req.step}, {req.step * 2}, etc.).
+    ⚠️ N'utilise pas 0 comme note. Chaque commentaire doit avoir un impact minimal,tout en étant pertinent, sur la note finale.
+    ⚠️ La somme des notes des commentaires que tu renvoies ne doit pas être inférieure à 0, et ne doit pas dépasser {req.max_grade}.
 
     ⚠️ Format strictement requis :
 
     Titre du commentaire 1 : ...  
     Commentaire 1 : ...  
     Note du commentaire 1 : ...
-
-    Titre du commentaire 2 : ...  
-    Commentaire 2 : ...  
-    Note du commentaire 2 : ...
 
     [...]
 
