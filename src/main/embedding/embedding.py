@@ -83,7 +83,7 @@ def main():
         texts_input = sys.stdin.readline().strip()
         
         # Log received input for debugging (will be captured by Java process)
-        print(f"DEBUG: Received input: {texts_input}", file=sys.stderr)
+        # print(f"DEBUG: Received input: {texts_input}", file=sys.stderr)
         
         # Parse the JSON input
         texts = json.loads(texts_input)

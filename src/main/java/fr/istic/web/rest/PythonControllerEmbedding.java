@@ -32,7 +32,7 @@ public class PythonControllerEmbedding {
     @Path("/initialize-model")
     @Produces(MediaType.APPLICATION_JSON)
     public Response initializeModel() {
-        log.info("Initializing the model...");
+        //log.info("Initializing the model...");
 
         try {
             // Start the Python process
@@ -44,7 +44,7 @@ public class PythonControllerEmbedding {
             processWriter = new BufferedWriter(new OutputStreamWriter(pythonProcess.getOutputStream()));
             processReader = new BufferedReader(new InputStreamReader(pythonProcess.getInputStream()));
 
-            log.info("Model initialized and waiting for data...");
+            //log.info("Model initialized and waiting for data...");
             return Response.ok(Map.of("status", "Model initialized and waiting for data.")).build();
         } catch (Exception e) {
             log.error("Error while initializing the model.", e);
@@ -62,7 +62,7 @@ public class PythonControllerEmbedding {
         Map<String, Object> response = new HashMap<>();
 
         try {
-            log.info("Submitting complete data...");
+            //log.info("Submitting complete data...");
             Object textsObj = requestData.get("texts");
             List<String> texts = new ArrayList<>();
             if (textsObj instanceof List<?>) {
@@ -90,7 +90,7 @@ public class PythonControllerEmbedding {
             String textsJson = new JSONArray(texts).toString();
 
             // Send data to running process
-            log.info("Sending texts to Python process: {}", textsJson);
+            //log.info("Sending texts to Python process: {}", textsJson);
             processWriter.write(textsJson);
             processWriter.newLine();
             processWriter.flush();
