@@ -74,7 +74,7 @@ class GradeRequest(BaseModel):
     """
     question: str
     # notes: str
-    student_answer: str
+    student_answer: List[str]
     max_grade: int
     step: float
     existing_comments: Optional[List[TextComment]] = Field(default_factory=list)
@@ -95,7 +95,7 @@ class GradeRequestGradedComment(BaseModel):
     """
     question: str
     # notes: str
-    student_answer: str
+    student_answer: List[str]
     max_grade: int
     step: float
     existing_comments: Optional[List[GradedComment]] = Field(default_factory=list)
@@ -177,8 +177,8 @@ def grade(req: GradeRequest):
     Tu es une assistante pédagogique spécialisée dans la notation d'examens.
 
     Voici le contexte du cours: "{context}"
-    Voici la question : "{req.question}"  
-    Voici la réponse de l'étudiant : "{req.student_answer}"  
+    QUESTION: "{req.question}"  
+    RÉPONSES DES ÉTUDIANTS : "{req.student_answer}"  
     Commentaires existants :  
     {comments_text}
 
@@ -265,25 +265,23 @@ def grade_graded_comment(req: GradeRequestGradedComment):
     prompt = f"""
     Tu es une assistante pédagogique spécialisée dans la notation d'examens.
 
-    Voici la question : "{req.question}"  
-    Voici la réponse de l'étudiant : "{req.student_answer}"  
+
+    Contexte pour construire les commentaires :{context}
+    Commentaires existants :  {comments_text}
+    QUESTION : "{req.question}"  
+    RÉPONSES DES ÉTUDIANTS : "{req.student_answer}"  
 
     Ta tâche :  
-    - Génère des commentaires expliquant l'évaluation de cette réponse à partir du contexte fourni et de tes propres connaissances.  
+    - Génère des commentaires expliquant l'évaluation de ces réponses à partir du contexte fourni et de tes propres connaissances.  
     - Chaque commentaire doit être :
         • concis (3 à 5 mots),  
         • applicable à d'autres réponses similaires,  
         • cohérent avec la matière de la question,  
-        • accompagné d'une **note {req.grade_type}**, en respectant le pas de notation de {req.step}. Prends en compte que le maximum note pour cette question est {req.max_grade}.  
+        • accompagné d'une **note {req.grade_type}**, en respectant le pas de notation de {req.step}. 
+        • prends en compte que le maximum note pour cette question est {req.max_grade} donc enlever/ajouter plus que {req.max_grade}.  
     - Si des commentaires existants sont disponibles, **réutilise-les exactement (memes titres, memes commentaire et meme note)** (sans les modifier, même s’ils comportent des erreurs), si l’un d’eux correspond à ce que tu veux proposer.  
     - Sinon, crée de nouveaux commentaires.  
     - La note globale sera calculée automatiquement à partir des notes des commentaires, donc **ne donne pas de note finale globale**.
-
-    Commentaires existants :  
-    {comments_text}
-
-    Contexte pour construire les commentaires :
-    {context}
 
     ⚠️ Chaque note de commentaire doit être un multiple de {req.step} (exemples : 0, {req.step}, {req.step * 2}, etc.).N'utilise pas 0 comme note. Chaque commentaire doit avoir un impact sur la note finale.
 
@@ -358,6 +356,7 @@ def propose_comments(req: TCommentRequest):
     prompt = f"""
     Tu es une assistante pédagogique spécialisée dans l'évaluation d'examens.
 
+    Contexte pour construire les commentaires :{context}
     QUESTION : "{req.question}"
 
     RÉPONSES DES ÉTUDIANTS : "{req.student_answers}"
@@ -370,9 +369,6 @@ def propose_comments(req: TCommentRequest):
         • être réutilisable pour des réponses similaires,
         • couvrir un point fort ou une erreur fréquente,
         • être pertinent par rapport à la matière de la question.
-
-    Contexte pour construire les commentaires :
-    {context}
 
     FORMAT EXACT REQUIS (respecte strictement ce format) :
 
